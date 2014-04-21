@@ -13,18 +13,24 @@
 namespace NEAT{
 
 template<typename T>
-struct Point{
+struct Point2D
+{
     T X;
     T Y;
-    Point(T x, T y):
+
+    static const unsigned short SIZE = 2;
+
+    Point2D(T x, T y):
         X(x), Y(y){}
-    Point(std::vector<T> vec){
+
+    Point2D(std::vector<T> vec){
         ASSERT(vec.size() == 2);
         X = vec[0];Y = vec[1];
     }
 
     std::vector<T> vector(){
         std::vector<T> result;
+        result.reserve(2);
         result.push_back(X);
         result.push_back(Y);
         return result;
@@ -34,15 +40,15 @@ struct Point{
         return X + Y;
     }
 
-    bool operator==(const Point & other)const{
+    bool operator==(const Point2D & other)const{
         return distance() == other.distance();
     }
 
-    bool operator <(const Point & other)const{
+    bool operator <(const Point2D & other)const{
         return distance() < other.distance();
     }
 
-    bool operator >(const Point & other)const{
+    bool operator >(const Point2D & other)const{
         return distance() > other.distance();
     }
 
@@ -57,10 +63,16 @@ struct Point{
         }
     }
 
+    unsigned short size(){
+        return SIZE;
+    }
+
 };
 
-typedef Point<float> PointF;
-typedef Point<double> PointD;
+typedef Point2D<float> PointF;
+typedef Point2D<double> PointD;
+
+
 
 }
 

@@ -342,6 +342,26 @@ public:
     // Per how many evaluations to change the treshold
     unsigned int CompatTreshChangeInterval_Evaluations;
 
+    //ES-HyperNEAT parameters
+
+    //The initial sample resolution.
+    unsigned int InitialDepth;// = 8;
+
+    //Maximal resolution if the variance is still higher than the given division threshold
+    unsigned int MaximumDepth;// = 8;
+
+    //The initial resolution can be further increased if the variance is higher than this level. 0.5 seems to be a good value. If higher than 1.0 this value
+    //has no affect.
+    double DivisionThreshold;// = 10.5;
+
+    //Variance threshold  for the initial sampling
+    double VarianceThreshold;// = 0.03;
+
+    //Threshold to determine when a neuron is regarded to being enclosed by neighbors of opposite values
+    double BandingThreshold;// = 0.3;
+
+    //The number of times the ES-HyperNEAT algorithm should iterativly discover new hidden nodes
+    unsigned int ESIterations;// = 1;
 
     /////////////////////////////////////
     // Constructors

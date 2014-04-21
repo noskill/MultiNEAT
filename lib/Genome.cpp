@@ -34,17 +34,17 @@
 
 #include <math.h>
 #include "Genome.h"
-#include "Random.h"
 #include "Utils.h"
 #include "Parameters.h"
 #include "Assert.h"
-
+#include "EvolvableSubstrate.h"
+#include "Random.h"
 
 namespace NEAT
 {
 
 // forward
-ActivationFunction GetRandomActivation(Parameters& a_Parameters, RNG& a_RNG);
+ActivationFunction GetRandomActivation(Parameters& a_Parameters, NEAT::RNG& a_RNG);
 
 
 // Create an empty genome
@@ -242,6 +242,7 @@ Genome::Genome(unsigned int a_ID,
     m_PhenotypeBehavior = NULL;
 }
 
+
 // A little helper function to find the index of a neuron, given its ID
 // returns -1 if not found
 unsigned int Genome::GetNeuronIndex(unsigned int a_ID) const
@@ -283,7 +284,7 @@ unsigned int Genome::GetLastNeuronID() const
 {
     ASSERT(NumNeurons() > 0);
 
-    int t_maxid = 0;
+    uint t_maxid = 0;
 
     for(unsigned int i=0; i< NumNeurons(); i++)
     {
@@ -294,12 +295,13 @@ unsigned int Genome::GetLastNeuronID() const
     return t_maxid+1;
 }
 
+
 // returns the max innovation Id
 unsigned int Genome::GetLastInnovationID() const
 {
     ASSERT(NumLinks() > 0);
 
-    int t_maxid = 0;
+    uint t_maxid = 0;
 
     for(unsigned int i=0; i< NumLinks(); i++)
     {
@@ -309,6 +311,7 @@ unsigned int Genome::GetLastInnovationID() const
 
     return t_maxid+1;
 }
+
 
 // Returns true if the specified neuron ID is present in the genome
 bool Genome::HasNeuronID(unsigned int a_ID) const
@@ -344,6 +347,7 @@ bool Genome::HasLink(unsigned int a_n1id, unsigned int a_n2id) const
     return false;
 }
 
+
 // Returns true if the specified link is present in the genome
 bool Genome::HasLinkByInnovID(unsigned int id) const
 {
@@ -358,6 +362,14 @@ bool Genome::HasLinkByInnovID(unsigned int id) const
     }
 
     return false;
+}
+
+
+NeuralNetwork Genome::buildTempPhenotype(bool a_minimal=true){
+    NeuralNetwork t_temp_phenotype(a_minimal);
+    BuildPhenotype(t_temp_phenotype);
+    t_temp_phenotype.Flush();
+    return t_temp_phenotype;
 }
 
 
@@ -411,10 +423,6 @@ void Genome::BuildPhenotype(NeuralNetwork& a_Net) const
 }
 
 
-
-
-
-
 // Builds a HyperNEAT phenotype based on the substrate
 // The CPPN input dimensionality must match the largest number of
 // dimensions in the substrate
@@ -423,32 +431,32 @@ void Genome::BuildPhenotype(NeuralNetwork& a_Net) const
 void Genome::BuildHyperNEATPhenotype(NeuralNetwork& net, Substrate& subst)
 {
     // We need a substrate with at least one input and output
-    ASSERT(subst.m_input_coords.size() > 0);
-    ASSERT(subst.m_output_coords.size() > 0);
+    ASSERT(subst._input_coords.size() > 0);
+    ASSERT(subst._output_coords.size() > 0);
 
     int CPPN_numinputs = subst.GetMinCPPNInputs();
     int max_dims = subst.GetMaxDims();
 
     // Make sure the CPPN dimensionality is right
     ASSERT(CPPN_numinputs > 0);
-    ASSERT(NumInputs() == CPPN_numinputs);
+    ASSERT(NumMinCPPNInputs() == CPPN_numinputs);
     if (subst.m_leaky)
     {
         ASSERT(NumOutputs() >= subst.GetMinCPPNOutputs());
     }
 
     // Now we create the substrate (net)
-    net.SetInputOutputDimentions(static_cast<unsigned short>(subst.m_input_coords.size()),
-                                 static_cast<unsigned short>(subst.m_output_coords.size()));
+    net.SetInputOutputDimentions(static_cast<unsigned short>(subst._input_coords.size()),
+                                 static_cast<unsigned short>(subst._output_coords.size()));
 
     // Inputs
-    for(unsigned int i=0; i<subst.m_input_coords.size(); i++)
+    for(unsigned int i=0; i<subst._input_coords.size(); i++)
     {
         Neuron t_n;
 
         t_n.m_a = 1;
         t_n.m_b = 0;
-        t_n.m_substrate_coords = subst.m_input_coords[i];
+        t_n.m_substrate_coords = subst._input_coords[i];
         ASSERT(t_n.m_substrate_coords.size() > 0); // prevent 0D points
         t_n.m_activation_function_type = NEAT::LINEAR;
         t_n.m_type = NEAT::INPUT;
@@ -457,13 +465,13 @@ void Genome::BuildHyperNEATPhenotype(NeuralNetwork& net, Substrate& subst)
     }
 
     // Hidden
-    for(unsigned int i=0; i<subst.m_hidden_coords.size(); i++)
+    for(unsigned int i=0; i<subst._hidden_coords.size(); i++)
     {
         Neuron t_n;
 
         t_n.m_a = 1;
         t_n.m_b = 0;
-        t_n.m_substrate_coords = subst.m_hidden_coords[i];
+        t_n.m_substrate_coords = subst._hidden_coords[i];
         ASSERT(t_n.m_substrate_coords.size() > 0); // prevent 0D points
         t_n.m_activation_function_type = subst.m_hidden_nodes_activation;
         t_n.m_type = NEAT::HIDDEN;
@@ -472,13 +480,13 @@ void Genome::BuildHyperNEATPhenotype(NeuralNetwork& net, Substrate& subst)
     }
 
     // Output
-    for(unsigned int i=0; i<subst.m_output_coords.size(); i++)
+    for(unsigned int i=0; i<subst._output_coords.size(); i++)
     {
         Neuron t_n;
 
         t_n.m_a = 1;
         t_n.m_b = 0;
-        t_n.m_substrate_coords = subst.m_output_coords[i];
+        t_n.m_substrate_coords = subst._output_coords[i];
         ASSERT(t_n.m_substrate_coords.size() > 0); // prevent 0D points
         t_n.m_activation_function_type = subst.m_output_nodes_activation;
         t_n.m_type = NEAT::OUTPUT;
@@ -488,13 +496,10 @@ void Genome::BuildHyperNEATPhenotype(NeuralNetwork& net, Substrate& subst)
 
     // Begin querying the CPPN
     // Create the neural network that will represent the CPPN
-    NeuralNetwork t_temp_phenotype(true);
-    BuildPhenotype(t_temp_phenotype);
-    t_temp_phenotype.Flush();
-
+    NeuralNetwork t_temp_phenotype = buildTempPhenotype(true);
+    t_temp_phenotype.SetInputOutputDimentions(4, 1);
     // now loop over every potential connection in the substrate and take its weight
-    CalculateDepth();
-    int dp = GetDepth();
+    uint dp = CalculateDepth();
 
     // only incoming connections, so loop only the hidden and output neurons
     for(unsigned int i=net.NumInputs(); i<net.m_neurons.size(); i++)
@@ -507,11 +512,11 @@ void Genome::BuildHyperNEATPhenotype(NeuralNetwork& net, Substrate& subst)
             // Inputs for the generation of time consts and biases across
             // the nodes in the substrate
             // We input only the position of the first node and ignore the other one
-            std::vector<double> t_inputs;
-            t_inputs.resize(CPPN_numinputs);
 
+            std::vector<double> t_inputs;
+            t_inputs.resize(NumMinCPPNInputs());
             for(int n=0; n<net.m_neurons[i].m_substrate_coords.size(); n++)
-                t_inputs[n] = net.m_neurons[i].m_substrate_coords[n];
+                   t_inputs[n] = net.m_neurons[i].m_substrate_coords[n];
 
             if (subst.m_with_distance)
                 t_inputs[CPPN_numinputs - 2] = 0.0;//sqrt(sqr(net.m_neurons[i].m_sx) + sqr(net.m_neurons[i].m_sy)); // distance from 0,0
@@ -520,7 +525,7 @@ void Genome::BuildHyperNEATPhenotype(NeuralNetwork& net, Substrate& subst)
             t_temp_phenotype.Input(t_inputs);
 
             // activate as many times as deep
-            for(int d=0; d<dp; d++)
+            for(uint d=0; d<dp; d++)
                 t_temp_phenotype.Activate();
 
             double t_tc   = t_temp_phenotype.Output()[1];
@@ -575,17 +580,17 @@ void Genome::BuildHyperNEATPhenotype(NeuralNetwork& net, Substrate& subst)
             // Take the weight of this connection by querying the CPPN
             // as many times as deep (recurrent or looped CPPNs may be very slow!!!*)
             std::vector<double> t_inputs;
-            t_inputs.resize(NumInputs());
+            t_inputs.resize(NumMinCPPNInputs());
 
-            int from_dims = net.m_neurons[j].m_substrate_coords.size();
-            int to_dims = net.m_neurons[i].m_substrate_coords.size();
+            uint from_dims = net.m_neurons[j].m_substrate_coords.size();
+            uint to_dims = net.m_neurons[i].m_substrate_coords.size();
 
             // input the node positions to the CPPN
             // from
-            for(int n=0; n<from_dims; n++)
+            for(uint n=0; n<from_dims; n++)
                 t_inputs[n] = net.m_neurons[j].m_substrate_coords[n];
             // to
-            for(int n=0; n<to_dims; n++)
+            for(uint n=0; n<to_dims; n++)
                 t_inputs[max_dims + n] = net.m_neurons[i].m_substrate_coords[n];
 
             // the input is like
@@ -605,7 +610,7 @@ void Genome::BuildHyperNEATPhenotype(NeuralNetwork& net, Substrate& subst)
             t_temp_phenotype.Input(t_inputs);
 
             // activate as many times as deep
-            for(int d=0; d<dp; d++)
+            for(uint d=0; d<dp; d++)
                 t_temp_phenotype.Activate();
 
             // the output is a weight
@@ -613,7 +618,7 @@ void Genome::BuildHyperNEATPhenotype(NeuralNetwork& net, Substrate& subst)
 
             Clamp(t_weight, -1, 1);
 
-            double t_abs_weight = (t_weight < 0)? -t_weight : t_weight;
+            double t_abs_weight = (t_weight < 0)? - t_weight : t_weight;
             if (t_abs_weight > subst.m_link_threshold)
             {
                 // now this weight will be scaled
@@ -637,9 +642,85 @@ void Genome::BuildHyperNEATPhenotype(NeuralNetwork& net, Substrate& subst)
 }
 
 
+void Genome::BuildHyperNEATESPhenotype(NeuralNetwork& net, EvolvableSubstrate& subst){
+    // We need a substrate with at least one input and output
+    ASSERT(subst.inputCoordinates.size() > 0);
+    ASSERT(subst.outputCoordinates.size() > 0);
+/*
+    int CPPN_numinputs = subst.GetMinCPPNInputs();
+
+    // Make sure the CPPN dimensionality is right
+    ASSERT(CPPN_numinputs > 0);
+    ASSERT(NumInputs() == CPPN_numinputs);
+    if (subst.m_leaky)
+    {
+        ASSERT(NumOutputs() >= subst.GetMinCPPNOutputs());
+    }
+*/
+    // Now we create the substrate (net)
+    net.SetInputOutputDimentions(static_cast<unsigned short>(subst.inputCoordinates.size()),
+                                 static_cast<unsigned short>(subst.outputCoordinates.size()));
 
 
+    // Create the neural network that will represent the CPPN
+    NeuralNetwork t_temp_phenotype = buildTempPhenotype();
+    t_temp_phenotype.SetInputOutputDimentions(4, 1);
+    subst.generateSubstrate(t_temp_phenotype);
 
+    // Inputs
+    for(unsigned int i=0; i<subst.inputCoordinates.size(); i++)
+    {
+        Neuron t_n;
+
+        t_n.m_a = 1;
+        t_n.m_b = 0;
+        t_n.m_substrate_coords = subst.inputCoordinates[i];
+
+        t_n.m_activation_function_type = NEAT::LINEAR;
+        t_n.m_type = NEAT::INPUT;
+
+        net.AddNeuron(t_n);
+    }
+
+    // Output
+    for(unsigned int i=0; i<subst.outputCoordinates.size(); i++)
+    {
+        Neuron t_n;
+
+        t_n.m_a = 1;
+        t_n.m_b = 0;
+        t_n.m_substrate_coords = subst.outputCoordinates[i];
+
+        t_n.m_activation_function_type = subst.m_output_nodes_activation;
+        t_n.m_type = NEAT::OUTPUT;
+
+        net.AddNeuron(t_n);
+    }
+
+    // Hidden
+    for(unsigned int i=0; i<subst.hiddenCoordinates.size(); i++)
+    {
+        Neuron t_n;
+
+        t_n.m_a = 1;
+        t_n.m_b = 0;
+        t_n.m_substrate_coords = subst.hiddenCoordinates[i];
+
+        t_n.m_activation_function_type = subst.m_hidden_nodes_activation;
+        t_n.m_type = NEAT::HIDDEN;
+
+        net.AddNeuron(t_n);
+    }
+
+    for (LinkGene linkGene:subst.connections){
+        Connection conn;
+        conn.m_source_neuron_idx = linkGene.FromNeuronID();
+        conn.m_target_neuron_idx = linkGene.ToNeuronID();
+        conn.m_weight = linkGene.GetWeight();
+        net.AddConnection(std::move(conn));
+    }
+
+}
 
 
 // Projects the weight changes of a phenotype back to the genome.
@@ -662,14 +743,6 @@ void Genome::DerivePhenotypicChanges(NeuralNetwork& a_Net)
     // TODO: if neuron parameters were changed, derive them
     // * in future expansions
 }
-
-
-
-
-
-
-
-
 
 
 // Returns the absolute distance between this genome and a_G
@@ -697,8 +770,8 @@ double Genome::CompatibilityDistance(Genome &a_G, Parameters& a_Parameters)
     double t_num_matching_neurons = 0;
 
     // used for percentage of excess/disjoint genes calculation
-    int t_max_genome_size = static_cast<int> (NumLinks()   < a_G.NumLinks())   ? (a_G.NumLinks())   : (NumLinks());
-    int t_max_neurons     = static_cast<int> (NumNeurons() < a_G.NumNeurons()) ? (a_G.NumNeurons()) : (NumNeurons());
+    // int t_max_genome_size = static_cast<int> (NumLinks()   < a_G.NumLinks())   ? (a_G.NumLinks())   : (NumLinks());
+    // int t_max_neurons     = static_cast<int> (NumNeurons() < a_G.NumNeurons()) ? (a_G.NumNeurons()) : (NumNeurons());
 
     t_g1 = m_LinkGenes.begin();
     t_g2 = a_G.m_LinkGenes.begin();
@@ -842,8 +915,6 @@ bool Genome::IsCompatibleWith(Genome& a_G, Parameters& a_Parameters)
 }
 
 
-
-
 // Returns a random activation function from the canonical set based ot probabilities
 ActivationFunction GetRandomActivation(Parameters& a_Parameters, RNG& a_RNG)
 {
@@ -864,9 +935,8 @@ ActivationFunction GetRandomActivation(Parameters& a_Parameters, RNG& a_RNG)
     t_probs.push_back(a_Parameters.ActivationFunction_UnsignedSquare_Prob);
     t_probs.push_back(a_Parameters.ActivationFunction_Linear_Prob);
 
-    return (NEAT::ActivationFunction)a_RNG.Roulette(t_probs);
+    return (ActivationFunction)a_RNG.Roulette(t_probs);
 }
-
 
 
 // Adds a new neuron to the genome
@@ -1118,10 +1188,6 @@ bool Genome::Mutate_AddNeuron(InnovationDatabase &a_Innovs, Parameters& a_Parame
 }
 
 
-
-
-
-
 // Adds a new link to the genome
 // returns true if succesful
 bool Genome::Mutate_AddLink(InnovationDatabase &a_Innovs, Parameters& a_Parameters, RNG& a_RNG)
@@ -1192,7 +1258,7 @@ bool Genome::Mutate_AddLink(InnovationDatabase &a_Innovs, Parameters& a_Paramete
     {
         // first see if this should come from the bias or not
         bool t_found_bias = true;
-        t_n1idx = static_cast<int>(NumInputs()-1); // the bias is always the last input
+        t_n1idx = static_cast<int>(NumMinCPPNInputs()-1); // the bias is always the last input
         // try to find a neuron that is not connected to the bias already
         t_NumTries = 0;
         do
@@ -1339,8 +1405,6 @@ bool Genome::Mutate_AddLink(InnovationDatabase &a_Innovs, Parameters& a_Paramete
 }
 
 
-
-
 ///////////
 // Helper functions for the pruning procedure
 
@@ -1362,7 +1426,6 @@ void Genome::RemoveLinkGene(unsigned int a_InnovID)
         t_curlink++;
     }
 }
-
 
 
 // Remove node
@@ -1566,7 +1629,7 @@ bool Genome::Mutate_RemoveLink(RNG& a_RNG)
 
 
 // Returns the count of links inputting from the specified neuron ID
-int Genome::LinksInputtingFrom(unsigned int a_ID) const
+uint Genome::LinksInputtingFrom(unsigned int a_ID) const
 {
     int t_counter = 0;
     for(unsigned int i=0; i<NumLinks(); i++)
@@ -1580,7 +1643,7 @@ int Genome::LinksInputtingFrom(unsigned int a_ID) const
 
 
 // Returns the count of links outputting to the specified neuron ID
-int Genome::LinksOutputtingTo(unsigned int a_ID) const
+uint Genome::LinksOutputtingTo(unsigned int a_ID) const
 {
     int t_counter = 0;
     for(unsigned int i=0; i<NumLinks(); i++)
@@ -1598,7 +1661,7 @@ int Genome::LinksOutputtingTo(unsigned int a_ID) const
 bool Genome::Mutate_RemoveSimpleNeuron(InnovationDatabase& a_Innovs, RNG& a_RNG)
 {
     // At least one hidden node must be present
-    if (NumNeurons() == (NumInputs() + NumOutputs()))
+    if (NumNeurons() == (NumMinCPPNInputs() + NumOutputs()))
         return false;
 
     // Build a list of candidate neurons for deletion
@@ -1693,13 +1756,6 @@ bool Genome::Mutate_RemoveSimpleNeuron(InnovationDatabase& a_Innovs, RNG& a_RNG)
 
     return false;
 }
-
-
-
-
-
-
-
 
 
 
@@ -1823,7 +1879,6 @@ void Genome::Mutate_LinkWeights(Parameters& a_Parameters, RNG& a_RNG)
 
 
 
-
 // Set all link weights to random values between [-R .. R]
 void Genome::Randomize_LinkWeights(double a_Range, RNG& a_RNG)
 {
@@ -1879,7 +1934,7 @@ void Genome::Mutate_NeuronActivations_B(Parameters& a_Parameters, RNG& a_RNG)
 void Genome::Mutate_NeuronActivation_Type(Parameters& a_Parameters, RNG& a_RNG)
 {
     // the first non-input neuron
-    int t_first_idx = NumInputs();
+    int t_first_idx = NumMinCPPNInputs();
     int t_choice = a_RNG.RandInt(t_first_idx, m_NeuronGenes.size()-1);
 
     m_NeuronGenes[t_choice].m_ActFunction = GetRandomActivation(a_Parameters, a_RNG);
@@ -2341,9 +2396,7 @@ unsigned int Genome::NeuronDepth(unsigned int a_NeuronID, unsigned int a_Depth)
 }
 
 
-
-
-void Genome::CalculateDepth()
+uint Genome::CalculateDepth()
 {
     unsigned int t_max_depth = 0;
     unsigned int t_cur_depth = 0;
@@ -2353,7 +2406,7 @@ void Genome::CalculateDepth()
     if (NumNeurons() == (m_NumInputs+m_NumOutputs))
     {
         m_Depth = 1;
-        return;
+        return m_Depth;
     }
 
     // make a list of all output IDs
@@ -2376,10 +2429,8 @@ void Genome::CalculateDepth()
     }
 
     m_Depth = t_max_depth;
+    return m_Depth;
 }
-
-
-
 
 
 

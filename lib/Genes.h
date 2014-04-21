@@ -100,17 +100,17 @@ private:
     // anymore
 
     // The IDs of the neurons that this link connects
-    int m_FromNeuronID, m_ToNeuronID;
+    uint m_FromNeuronID, m_ToNeuronID;
 
     // The link's innovation ID
-    int m_InnovationID;
-
-    // Is it recurrent?
-    bool m_IsRecurrent;
+    uint m_InnovationID;
 
     // This variable is modified during evolution
     // The weight of the connection
     double m_Weight;
+
+    // Is it recurrent?
+    bool m_IsRecurrent;
 
 public:
 
@@ -140,8 +140,8 @@ public:
     ////////////////
     // Constructors
     ////////////////
-    LinkGene(int a_InID, int a_OutID, int a_InnovID, double a_Wgt, bool a_Recurrent = false):
-        m_FromNeuronID(a_InID), m_ToNeuronID(a_OutID), m_InnovationID(a_InnovID), m_Weight(a_Wgt), m_IsRecurrent(a_Recurrent)
+    LinkGene(int inId, int outId, int innovId, double weight, bool isReccurent = false):
+        m_FromNeuronID(inId), m_ToNeuronID(outId), m_InnovationID(innovId), m_Weight(weight), m_IsRecurrent(isReccurent)
     {}
 
     LinkGene()
@@ -171,15 +171,15 @@ public:
     //////////////
 
     // Access to static (const) variables
-    int FromNeuronID() const
+    uint FromNeuronID() const
     {
         return m_FromNeuronID;
     }
-    int ToNeuronID() const
+    uint ToNeuronID() const
     {
         return m_ToNeuronID;
     }
-    int InnovationID() const
+    uint InnovationID() const
     {
         return m_InnovationID;
     }
@@ -230,7 +230,7 @@ private:
     // anymore
 
     // Its unique identification number
-    int m_ID;
+    uint m_ID;
 
     // Its type and role in the network
     NeuronType m_Type;
@@ -303,7 +303,7 @@ public:
     // Constructors
     ////////////////
     NeuronGene(NeuronType a_type,
-               int a_id,
+               uint a_id,
                double a_splity)
         :m_ID(a_id), m_Type(a_type), m_SplitY(a_splity)
     {
@@ -354,7 +354,7 @@ public:
     //////////////
 
     // Accessing static (const) variables
-    int ID() const
+    uint ID() const
     {
         return m_ID;
     }

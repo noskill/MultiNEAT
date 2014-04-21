@@ -24,7 +24,6 @@
 
 
 
-#include <vector>
 #include "NeuralNetwork.h"
 #include "Utils.h"
 #include "Substrate.h"
@@ -57,9 +56,9 @@ Substrate::Substrate(std::vector<std::vector<double> >& a_inputs,
     m_min_time_const = 0.1;
     m_max_time_const = 1.0;
 
-    m_input_coords = a_inputs;
-    m_hidden_coords = a_hidden;
-    m_output_coords = a_outputs;
+    _input_coords = a_inputs;
+    _hidden_coords = a_hidden;
+    _output_coords = a_outputs;
 }
 
 
@@ -88,32 +87,32 @@ Substrate::Substrate(py::list a_inputs, py::list a_hidden, py::list a_outputs)
     int inp = py::len(a_inputs);
     int hid = py::len(a_hidden);
     int out = py::len(a_outputs);
-    m_input_coords.resize( inp );
-    m_hidden_coords.resize( hid );
-    m_output_coords.resize( out );
+    _input_coords.resize( inp );
+    _hidden_coords.resize( hid );
+    _output_coords.resize( out );
 
     for(int i=0; i<inp; i++)
     {
         for(int j=0; j<py::len(a_inputs[i]); j++)
-            m_input_coords[i].push_back(py::extract<double>(a_inputs[i][j]));
+            _input_coords[i].push_back(py::extract<double>(a_inputs[i][j]));
     }
     for(int i=0; i<hid; i++)
     {
         for(int j=0; j<py::len(a_hidden[i]); j++)
-            m_hidden_coords[i].push_back(py::extract<double>(a_hidden[i][j]));
+            _hidden_coords[i].push_back(py::extract<double>(a_hidden[i][j]));
     }
     for(int i=0; i<out; i++)
     {
         for(int j=0; j<py::len(a_outputs[i]); j++)
-            m_output_coords[i].push_back(py::extract<double>(a_outputs[i][j]));
+            _output_coords[i].push_back(py::extract<double>(a_outputs[i][j]));
     }
 }
 
 
-int Substrate::GetMinCPPNInputs()
+uint Substrate::GetMinCPPNInputs()
 {
     // determine the dimensionality across the entire substrate
-    int cppn_inputs = GetMaxDims() * 2; // twice, because we query 2 points at a time
+    uint cppn_inputs = GetMaxDims() * 2; // twice, because we query 2 points at a time
 
     // the distance input
     if (m_with_distance)
@@ -122,7 +121,8 @@ int Substrate::GetMinCPPNInputs()
     return cppn_inputs + 1; // always count the bias
 }
 
-int Substrate::GetMinCPPNOutputs()
+
+uint Substrate::GetMinCPPNOutputs()
 {
     if (m_leaky)
         return 3;
@@ -131,26 +131,26 @@ int Substrate::GetMinCPPNOutputs()
 }
 
 
-int Substrate::GetMaxDims()
+uint Substrate::GetMaxDims()
 {
-    int max_dims = 0;
-    for(unsigned int i=0; i<m_input_coords.size(); i++)
-        if (max_dims < m_input_coords[i].size())
-            max_dims = m_input_coords[i].size();
-    for(unsigned int i=0; i<m_hidden_coords.size(); i++)
-        if (max_dims < m_hidden_coords[i].size())
-            max_dims = m_hidden_coords[i].size();
-    for(unsigned int i=0; i<m_output_coords.size(); i++)
-        if (max_dims < m_output_coords[i].size())
-            max_dims = m_output_coords[i].size();
+    uint max_dims = 0;
+    for(unsigned int i=0; i<_input_coords.size(); i++)
+        if (max_dims < _input_coords[i].size())
+            max_dims = _input_coords[i].size();
+    for(unsigned int i=0; i<_hidden_coords.size(); i++)
+        if (max_dims < _hidden_coords[i].size())
+            max_dims = _hidden_coords[i].size();
+    for(unsigned int i=0; i<_output_coords.size(); i++)
+        if (max_dims < _output_coords[i].size())
+            max_dims = _output_coords[i].size();
     return max_dims;
 }
 
 void Substrate::PrintInfo()
 {
-    std::cerr << "Inputs: " << m_input_coords.size() << "\n";
-    std::cerr << "Hidden: " << m_hidden_coords.size() << "\n";
-    std::cerr << "Outputs: " << m_output_coords.size() << "\n\n";
+    std::cerr << "Inputs: " << _input_coords.size() << "\n";
+    std::cerr << "Hidden: " << _hidden_coords.size() << "\n";
+    std::cerr << "Outputs: " << _output_coords.size() << "\n\n";
     std::cerr << "Dimensions: " << GetMinCPPNInputs() << "\n";
 }
 // namespace NEAT

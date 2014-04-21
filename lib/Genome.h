@@ -36,14 +36,15 @@
 #include <boost/serialization/vector.hpp>
 
 #include <vector>
-
+#include "Random.h"
 #include "NeuralNetwork.h"
 #include "Substrate.h"
 #include "Innovation.h"
 #include "Genes.h"
 #include "Assert.h"
 #include "PhenotypeBehavior.h"
-#include "Random.h"
+
+
 
 namespace NEAT
 {
@@ -57,8 +58,9 @@ namespace NEAT
 class Innovation;
 class InnovationDatabase;
 class PhenotypeBehavior;
+class EvolvableSubstrate;
 
-extern ActivationFunction GetRandomActivation(Parameters& a_Parameters, RNG& a_RNG);
+extern ActivationFunction GetRandomActivation(Parameters& a_Parameters, RNG & a_RNG);
 
 class Genome
 {
@@ -109,16 +111,19 @@ private:
     void RemoveNeuronGene(unsigned int a_id);
 
     // Returns the count of links inputting from the specified neuron ID
-    int LinksInputtingFrom(unsigned int a_id) const;
+    uint LinksInputtingFrom(unsigned int a_id) const;
 
     // Returns the count of links outputting to the specified neuron ID
-    int LinksOutputtingTo(unsigned int a_id) const;
+    uint LinksOutputtingTo(unsigned int a_id) const;
 
     // A recursive function returning the max depth from the specified neuron to the inputs
     unsigned int NeuronDepth(unsigned int a_NeuronID, unsigned int a_Depth);
 
     // Returns true is the specified neuron ID is a dead end or isolated
     bool IsDeadEndNeuron(unsigned int a_id) const;
+
+    // Create the neural network that will represent the CPPN
+    NeuralNetwork buildTempPhenotype(bool a_minimal);
 
 public:
 
@@ -217,7 +222,7 @@ public:
 
     unsigned int NumNeurons() const { return static_cast<unsigned int>(m_NeuronGenes.size()); }
     unsigned int NumLinks() const { return static_cast<unsigned int>(m_LinkGenes.size()); }
-    unsigned int NumInputs() const { return m_NumInputs; }
+    unsigned int NumMinCPPNInputs() const { return m_NumInputs; }
     unsigned int NumOutputs() const { return m_NumOutputs; }
 
     void SetNeuronXY(unsigned int a_idx, int a_x, int a_y)
@@ -226,12 +231,12 @@ public:
         m_NeuronGenes[a_idx].x = a_x;
         m_NeuronGenes[a_idx].y = a_y;
     }
-    void SetNeuronX(unsigned int a_idx, int a_x)
+    void SetNeuronX(unsigned int a_idx, uint a_x)
     {
         ASSERT(a_idx < m_NeuronGenes.size());
         m_NeuronGenes[a_idx].x = a_x;
     }
-    void SetNeuronY(unsigned int a_idx, int a_y)
+    void SetNeuronY(unsigned int a_idx, uint a_y)
     {
         ASSERT(a_idx < m_NeuronGenes.size());
         m_NeuronGenes[a_idx].y = a_y;
@@ -244,10 +249,10 @@ public:
     void SetAdjFitness(double a_af) { m_AdjustedFitness = a_af; }
 
     unsigned int GetID() const { return m_ID; }
-    void SetID(int a_id) { m_ID = a_id; }
+    void SetID(uint a_id) { m_ID = a_id; }
 
     unsigned int GetDepth() const { return m_Depth; }
-    void SetDepth(int a_d) { m_Depth = a_d; }
+    void SetDepth(uint a_d) { m_Depth = a_d; }
 
     // Returns true if there is any dead end in the network
     bool HasDeadEnds() const;
@@ -267,6 +272,8 @@ public:
     // Like CPPN/HyperNEAT stuff
     ////////////
     void BuildHyperNEATPhenotype(NeuralNetwork& net, Substrate& subst);
+
+    void BuildHyperNEATESPhenotype(NeuralNetwork& net, EvolvableSubstrate& subst);
 
     // Saves this genome to a file
     void Save(const char* a_filename);
@@ -300,7 +307,7 @@ public:
 
 
     // Calculates the network depth
-    void CalculateDepth();
+    uint CalculateDepth();
 
     ////////////
     // Mutation
@@ -308,7 +315,7 @@ public:
 
     // Adds a new neuron to the genome
     // returns true if succesful
-    bool Mutate_AddNeuron(InnovationDatabase &a_Innovs, Parameters& a_Parameters, RNG& a_RNG);
+    bool Mutate_AddNeuron(InnovationDatabase &a_Innovs, Parameters& a_Parameters, NEAT::RNG& a_RNG);
 
     // Adds a new link to the genome
     // returns true if succesful

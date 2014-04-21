@@ -38,8 +38,8 @@
 #include "NeuralNetwork.h"
 #include "assert.h"
 #include "Utils.h"
+#include <boost/format.hpp>
 
-#define NULL 0
 #define sqr(x) ((x)*(x))
 #define LEARNING_RATE 0.0001
 
@@ -157,7 +157,8 @@ double tanh_derivative(double x)
 ///////////////////////////////////////
 // Neural network class implementation
 ///////////////////////////////////////
-NeuralNetwork::NeuralNetwork(bool a_Minimal)
+NeuralNetwork::NeuralNetwork(bool a_Minimal):
+    m_Depth(0), is_depth_ready(false)
 {
     if (!a_Minimal)
     {
@@ -254,7 +255,8 @@ NeuralNetwork::NeuralNetwork(bool a_Minimal)
     }
 }
 
-NeuralNetwork::NeuralNetwork()
+NeuralNetwork::NeuralNetwork():
+    m_Depth(0), is_depth_ready(false)
 {
     // an empty network
     m_num_inputs = m_num_outputs = 0;
@@ -482,6 +484,7 @@ void NeuralNetwork::ActivateUseInternalBias()
 
 }
 
+
 void NeuralNetwork::ActivateLeaky(double a_dtime)
 {
     // Loop connections. Calculate each connection's output signal.
@@ -587,10 +590,15 @@ void NeuralNetwork::FlushCube()
             for (unsigned int k = 0; k < m_neurons.size(); k++)
                 m_neurons[k].m_sensitivity_matrix[i][j] = 0;
 }
+
+void NeuralNetwork::throwWrongSize(size_t actual, size_t expected){
+    throw std::runtime_error(boost::str(boost::format("input size %0% is not equal expected %1%") % actual % expected));
+}
+
 void NeuralNetwork::Input(std::vector<double>& a_Inputs)
 {
     if (a_Inputs.size() != m_num_inputs)
-        throw std::exception();
+        throwWrongSize(a_Inputs.size(), m_num_inputs);
 
     for (unsigned int i = 0; i < a_Inputs.size(); i++)
     {
@@ -600,7 +608,7 @@ void NeuralNetwork::Input(std::vector<double>& a_Inputs)
 
 void NeuralNetwork::Input_python_list(py::list& a_Inputs)
 {
-    int len = py::len(a_Inputs);
+    size_t len = py::len(a_Inputs);
     std::vector<double> inp;
     inp.resize(len);
     for(int i=0; i<len; i++)
@@ -608,9 +616,10 @@ void NeuralNetwork::Input_python_list(py::list& a_Inputs)
 
     // if the number of passed inputs differs from the actual number of inputs,
     // clip them to fit.
-    if (inp.size() != m_num_inputs)
+    if (inp.size() > m_num_inputs)
         inp.resize(m_num_inputs);
-
+    else
+        throwWrongSize(len, m_num_inputs);
     Input(inp);
 }
 
@@ -692,7 +701,7 @@ void NeuralNetwork::Adapt(Parameters& a_Parameters)
 
 }
 
-int NeuralNetwork::ConnectionExists(int a_to, int a_from)
+int NeuralNetwork::ConnectionExists(uint a_to, uint a_from)
 {
     for (unsigned int i = 0; i < m_connections.size(); i++)
     {
@@ -931,4 +940,95 @@ bool NeuralNetwork::Load(const char *a_filename)
     return Load(t_DataFile);
 }
 
-}; // namespace NEAT
+unsigned int NeuralNetwork::CalculateDepth()
+{
+    if (is_depth_ready){
+        return m_Depth;
+    }
+
+    unsigned int t_max_depth = 0;
+    unsigned int t_cur_depth = 0;
+
+    // The quick case - if no hidden neurons,
+    // the depth is 1
+    if (NumNeurons() == NumInputs() + NumOutputs())
+    {
+        m_Depth = 1;
+        return m_Depth;
+    }
+
+    // make a list of all output IDs
+    std::vector<unsigned int> t_output_ids;
+    for(unsigned int i=0; i < NumNeurons(); i++)
+    {
+        if (m_neurons[i].Type() == OUTPUT)
+        {
+            t_output_ids.push_back(i);
+        }
+    }
+
+    // For each output
+    for(unsigned int i=0; i<t_output_ids.size(); i++)
+    {
+        t_cur_depth = NeuronDepth(t_output_ids[i], 0);
+
+        if (t_cur_depth > t_max_depth)
+            t_max_depth = t_cur_depth;
+    }
+
+    m_Depth = t_max_depth;
+    return m_Depth;
+}
+
+
+unsigned int NeuralNetwork::NeuronDepth(unsigned int a_NeuronID, unsigned int a_Depth)
+{
+    unsigned int t_max_depth = a_Depth;
+
+    if (a_Depth > 16)
+    {
+        // oops! a loop in the network!
+        //std::cout << std::endl << " ERROR! Trying to get the depth of a looped network!" << std::endl;
+        return 16;
+    }
+
+    // Base case
+    if ((GetNeuronByID(a_NeuronID).Type() == INPUT) || (GetNeuronByID(a_NeuronID).Type() == BIAS))
+    {
+        return a_Depth;
+    }
+
+    // Find all links outputting to this neuron ID
+    auto t_inputting_links_idx = m_connections.get<ConnectionTargetMap>().equal_range(a_NeuronID);
+
+    // For all incoming links..
+    for (auto c_it=t_inputting_links_idx.first; c_it != t_inputting_links_idx.second; c_it++)
+    {
+        const Connection & t_link = *c_it;
+        // RECURSION
+        unsigned int t_current_depth = NeuronDepth(t_link.m_source_neuron_idx, a_Depth + 1);
+        if (t_current_depth > t_max_depth)
+            t_max_depth = t_current_depth;
+    }
+
+    return t_max_depth;
+}
+
+void NeuralNetwork::AddNeuron(const Neuron a_n) {
+    m_neurons.push_back( a_n );
+}
+
+
+void NeuralNetwork::RecursiveActivation(){
+    uint dp = this->CalculateDepth();
+    for(uint j=0; j < dp; j++){
+        this->Activate();
+    }
+}
+
+
+Neuron & NeuralNetwork::GetNeuronByID(uint ID){
+    return this->m_neurons[ID];
+}
+
+} // namespace NEAT

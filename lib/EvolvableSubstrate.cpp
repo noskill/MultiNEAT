@@ -1,58 +1,45 @@
 #include "EvolvableSubstrate.h"
 #include "NeuralNetwork.h"
 #include "Parameters.h"
+#include "Genes.h"
 
 
 
+using namespace NEAT;
 
-
-EvolvableSubstrate::EvolvableSubstrate(Parameters & p, py::list a_inputs, py::list a_outputs):
-    paramters(p)
+EvolvableSubstrate::EvolvableSubstrate(Parameters const & p, boost::python::list const &a_inputs, boost::python::list const &a_outputs):
+    parameters(p)
 {
-    m_leaky = false;
-    m_with_distance = false;
-    m_hidden_nodes_activation = NEAT::UNSIGNED_SIGMOID;
-    m_output_nodes_activation = NEAT::UNSIGNED_SIGMOID;
-    m_allow_input_hidden_links = true;
-    m_allow_input_output_links = true;
-    m_allow_hidden_hidden_links = true;
-    m_allow_hidden_output_links = true;
-    m_allow_output_hidden_links = true;
-    m_allow_output_output_links = true;
-    m_allow_looped_hidden_links = true;
-    m_allow_looped_output_links = true;
 
-    m_link_threshold = 0.2;
-    m_max_weight_and_bias = 5.0;
-    m_min_time_const = 0.1;
-    m_max_time_const = 1.0;
 
     // Make room for the data
-    int inp = py::len(a_inputs);
-    int out = py::len(a_outputs);
+    uint inp = py::len(a_inputs);
+    uint out = py::len(a_outputs);
 
-    m_input_coords.resize( inp );
-    hiddenCoordinates.resize( hid );
-    m_output_coords.resize( out );
+    inputCoordinates.reserve( inp );
+    //hiddenCoordinates.resize( hid );
+    outputCoordinates.reserve( out );
 
-    for(int i=0; i<inp; i++)
+    for(uint i=0; i<inp; i++)
     {
-        for(int j=0; j<py::len(a_inputs[i]); j++)
-            m_input_coords[i].push_back(py::extract<double>(a_inputs[i][j]));
+        std::vector<double> i_input;
+        for(uint j=0; j<py::len(a_inputs[i]); j++){
+            i_input.push_back(py::extract<double>(a_inputs[i][j]));
+        }
+        this->inputCoordinates.emplace_back(i_input);
     }
-    for(int i=0; i<hid; i++)
+
+    for(uint i=0; i<out; i++)
     {
-        for(int j=0; j<py::len(a_hidden[i]); j++)
-            hiddenCoordinates[i].push_back(py::extract<double>(a_hidden[i][j]));
-    }
-    for(int i=0; i<out; i++)
-    {
-        for(int j=0; j<py::len(a_outputs[i]); j++)
-            m_output_coords[i].push_back(py::extract<double>(a_outputs[i][j]));
+        std::vector<double> i_out;
+        for(uint j=0; j<py::len(a_outputs[i]); j++){
+            i_out.push_back(py::extract<double>(a_outputs[i][j]));
+        }
+        this->outputCoordinates.emplace_back(i_out);
     }
 }
 
-QuadPoint EvolvableSubstrate::QuadTreeInitialisation(float a, float b, bool outgoing, int initialDepth, int maxDepth){
+EvolvableSubstrate::QuadPoint EvolvableSubstrate::QuadTreeInitialisation(float a, float b, bool outgoing){
     QuadPoint root = QuadPoint(0.0f, 0.0f, 1.0f, 1); //x, y, width, level
     auto queue = std::deque<QuadPoint*>();
     queue.push_back(&root);
@@ -81,11 +68,11 @@ QuadPoint EvolvableSubstrate::QuadTreeInitialisation(float a, float b, bool outg
         }
 
         // Divide until initial resolution or if variance is still high
-        if (p->level < initialDepth || (p->level < maxDepth && variance(p) > divisionThreshold))
+        if (p->level < parameters.InitialDepth || (p->level < parameters.MaximumDepth && variance((*p)) > parameters.DivisionThreshold))
         {
             for (QuadPoint & c : p->childs)
             {
-                queue.push_back(*c);
+                queue.push_back(&c);
             }
         }
     }
@@ -93,25 +80,25 @@ QuadPoint EvolvableSubstrate::QuadTreeInitialisation(float a, float b, bool outg
 }
 
 void EvolvableSubstrate::setCPPN(NeuralNetwork * net){
-    this.cppn = net;
+    this->cppn = net;
 }
 
-std::vector<TempConnection> EvolvableSubstrate::PruneAndExpress(float a, float b, QuadPoint & node, bool outgoing, float maxDepth)
+std::vector<EvolvableSubstrate::TempConnection> EvolvableSubstrate::PruneAndExpress(float a, float b, QuadPoint & node, bool outgoing)
 {
     std::vector<TempConnection> connections;
 
     float left = 0.0f, right = 0.0f, top = 0.0f, bottom = 0.0f;
 
-    if (!node.childs[0]) return;
+    if (node.childs.size() == 0) return connections;
 
     // Traverse quadtree depth-first
     for (QuadPoint & c : node.childs)
     {
         float childVariance = variance(c);
 
-        if (childVariance >= varianceThreshold)
+        if (childVariance >= parameters.VarianceThreshold)
         {
-            for(auto & _tmp_conn: PruneAndExpress(a, b, connections, c, outgoing, maxDepth)){
+            for(auto & _tmp_conn: PruneAndExpress(a, b, c, outgoing)){
                 connections.push_back(_tmp_conn);
             }
         }
@@ -120,20 +107,20 @@ std::vector<TempConnection> EvolvableSubstrate::PruneAndExpress(float a, float b
             // Determine if point is in a band by checking neighbor CPPN values
             if (outgoing)
             {
-                left = Math.Abs(c.w - queryCPPN(a, b, c.x - node.width, c.y));
-                right = Math.Abs(c.w - queryCPPN(a, b, c.x + node.width, c.y));
-                top = Math.Abs(c.w - queryCPPN(a, b, c.x, c.y - node.width));
-                bottom = Math.Abs(c.w - queryCPPN(a, b, c.x, c.y + node.width));
+                left = std::abs(c.w - queryCPPN(a, b, c.x - node.width, c.y));
+                right = std::abs(c.w - queryCPPN(a, b, c.x + node.width, c.y));
+                top = std::abs(c.w - queryCPPN(a, b, c.x, c.y - node.width));
+                bottom = std::abs(c.w - queryCPPN(a, b, c.x, c.y + node.width));
             }
             else
             {
-                left = Math.Abs(c.w - queryCPPN(c.x - node.width, c.y, a, b));
-                right = Math.Abs(c.w - queryCPPN(c.x + node.width, c.y, a, b));
-                top = Math.Abs(c.w - queryCPPN(c.x, c.y - node.width, a, b));
-                bottom = Math.Abs(c.w - queryCPPN(c.x, c.y + node.width, a, b));
+                left = std::abs(c.w - queryCPPN(c.x - node.width, c.y, a, b));
+                right = std::abs(c.w - queryCPPN(c.x + node.width, c.y, a, b));
+                top = std::abs(c.w - queryCPPN(c.x, c.y - node.width, a, b));
+                bottom = std::abs(c.w - queryCPPN(c.x, c.y + node.width, a, b));
             }
 
-            if (std::max(std::min(top, bottom), std::min(left, right)) > bandThrehold)
+            if (std::max(std::min(top, bottom), std::min(left, right)) > parameters.BandingThreshold)
             {
                 if (outgoing)
                 {
@@ -151,139 +138,151 @@ std::vector<TempConnection> EvolvableSubstrate::PruneAndExpress(float a, float b
     return connections;
 }
 
-void EvolvableSubstrate::generateSubstrate(int initialDepth, float varianceThreshold, float bandThreshold, int ESIterations,
-                                        float divsionThreshold, int maxDepth,
-                                        unsigned int inputCount, unsigned int outputCount)
+void EvolvableSubstrate::clearHidden(){
+    this->connections.clear();
+    this->hiddenCoordinates.clear();
+    this->__hiddenInsertIndex.clear();
+}
+
+void EvolvableSubstrate::generateSubstrate(NeuralNetwork cppn)
 {
+    setCPPN(&cppn);
+    this->clearHidden();
 
-
-
-    int sourceIndex = 0, targetIndex = 0;
-    unsigned int counter = 0;
-
-    this.initialDepth = initialDepth;
-    this.maxDepth = maxDepth;
-    this.varianceThreshold = varianceThreshold;
-    this.bandThrehold = bandThreshold;
-    this.divisionThreshold = divsionThreshold;
-
+    uint inputCount = this->inputCoordinates.size();
+    uint outputCount = this->outputCoordinates.size();
 
     std::vector<TempConnection> tempConnections;
+    uint innovationCounter = 0;
 
     //CONNECTIONS DIRECTLY FROM INPUT NODES
-    for (std::vector<PointD> & input: inputNeuronPositions)
+    for (uint sourceIndex=0; sourceIndex < inputCoordinates.size(); sourceIndex++)
     {
+        PointD & input = inputCoordinates[sourceIndex];
+
         // Analyze outgoing connectivity pattern from this input
-        QuadPoint root = QuadTreeInitialisation(input.X, input.Y, true, (int)initialDepth, (int)maxDepth);
+        QuadPoint root = QuadTreeInitialisation(input.X, input.Y, true);
 
         // Traverse quadtree and add connections to list
-        tempConnections = std::move(PruneAndExpress(input.X, input.Y, root, true, maxDepth));
+        tempConnections = PruneAndExpress(input.X, input.Y, root, true);
 
         for (TempConnection & p : tempConnections)
         {
-            PointD newp = PointD(p->x2, p->y2);
-
-            targetIndex = hiddenCoordinates.IndexOf(newp);
-            if (targetIndex == -1)
+            PointD newp = PointD(p.x2, p.y2);
+            uint targetIndex;
+            auto it = __hiddenInsertIndex.find(newp);
+            if (it == __hiddenInsertIndex.end())
             {
 
-                targetIndex = hiddenNeurons.Count;
-                hiddenCoordinates.Add(newp);
+                targetIndex = hiddenCoordinates.size();
+                hiddenCoordinates.push_back(newp);
+                __hiddenInsertIndex[newp] = targetIndex;
             }
-            connections.Add(new ConnectionGene(counter++, (uint)(sourceIndex), (uint)(targetIndex + inputCount + outputCount), p->weight * HyperNEATParameters.weightRange, new float[] {p->x1,p->y1,p->x2,p->y2}));
+            else{
+                targetIndex = it->second;
+            }
+            connections.push_back(LinkGene(sourceIndex, targetIndex + inputCount + outputCount, innovationCounter++, p.weight));
         }
-        sourceIndex++;
     }
 
-    tempConnections.Clear();
+    tempConnections.clear();
 
-    //hidden to hidden part
+    //HIDDEN TO HIDDEN NEURONS
 
-    std::vector<PointD*> unexploredHiddenNodes;
-    for(NEAT::PointD * p: hiddenNeurons)
-        unexploredHiddenNodes.push_back(p);
-
-    for (int step = 0; step < ESIterations; step++)
+    std::map<PointD, uint> unexploredHiddenNodes(__hiddenInsertIndex);
+    uint sourceIndex = 0;
+    for (uint step = 0; step < this->parameters.ESIterations; step++)
     {
-        for (PointD *& hiddenP: unexploredHiddenNodes)
+        for (auto & hiddenP: unexploredHiddenNodes)
         {
-            tempConnections.clear();
-            QuadPoint root = QuadTreeInitialisation(hiddenp->X, hiddenp->Y, true, (int)initialDepth, (int)maxDepth);
-            PruneAndExpress(hiddenp->first, hiddenp->Y, tempConnections, root, true, maxDepth);
+            QuadPoint root = QuadTreeInitialisation(hiddenP.first.X, hiddenP.first.Y, true);
+            tempConnections = PruneAndExpress(hiddenP.first.X, hiddenP.first.Y, root, true);
 
-            sourceIndex = hiddenNeurons.IndexOf(hiddenP);   //TODO there might a computationally less expensive way
+            sourceIndex = hiddenP.second;
 
-            for (TempConnection p: tempConnections)
+            for (TempConnection const & p: tempConnections)
             {
 
-                PointF newp = new PointF(p->x2, p->y2);
+                PointD newp = PointD(p.x2, p.y2);
 
-                targetIndex = hiddenCoordinates.IndexOf(newp);
-                if (targetIndex == -1)
+                auto it = __hiddenInsertIndex.find(newp);
+                int targetIndex;
+                if (it == __hiddenInsertIndex.end())
                 {
-                    targetIndex = hiddenNeurons.Count;
-                    hiddenCoordinates.Add(newp);
+                    int targetIndex = hiddenCoordinates.size();
+                    hiddenCoordinates.push_back(newp);
+                    __hiddenInsertIndex[newp] = targetIndex;
 
                 }
-                m_links.emplace_back(counter++, (uint)(sourceIndex + inputCount + outputCount), (uint)(targetIndex + inputCount + outputCount), p->weight * HyperNEATParameters.weightRange, new float[] { p->x1, p->y1, p->x2, p->y2 });
+                else{
+                    targetIndex = it->second;
+                }
+                connections.emplace_back(sourceIndex + inputCount + outputCount, targetIndex + inputCount + outputCount, innovationCounter++, p.weight);
             }
         }
-        // Remove the just explored nodes
-        std::vector<PointD> temp;
-        temp->AddRange(hiddenNeurons);
-        for (PointF f: unexploredHiddenNodes)
-            temp->Remove(f);
 
-        unexploredHiddenNodes = temp;
+        auto temp(this->__hiddenInsertIndex);
+
+        // Remove the just explored nodes
+        for (auto f: unexploredHiddenNodes)
+            temp.erase(f.first);
+
+        unexploredHiddenNodes = std::move(temp);
 
     }
 
     tempConnections.clear();
 
-    //CONNECT TO OUTPUT
-    targetIndex = 0;
-    for (PointF & outputPos: outputNeuronPositions)
+    //CONNECT HIDDEN TO OUTPUT
+    for (uint targetIndex = 0; targetIndex < outputCoordinates.size(); targetIndex++)
     {
-        // Analyze incoming connectivity pattern to this output
-        QuadPoint root = QuadTreeInitialisation(outputPos.X, outputPos.Y, false, (int)initialDepth, (int)maxDepth);
-        tempConnections.Clear();
-        PruneAndExpress(outputPos.X, outputPos.Y, tempConnections, root, false, maxDepth);
+        const PointD & outputPos = outputCoordinates[targetIndex];
 
-        for (TempConnection & t: tempConnections)
+        // Analyze incoming connectivity pattern to this output
+        QuadPoint root = QuadTreeInitialisation(outputPos.X, outputPos.Y, false);
+
+        tempConnections = PruneAndExpress(outputPos.X, outputPos.Y, root, false);
+
+        for (const TempConnection &  t: tempConnections)
         {
             PointD source(t.x1, t.y1);
-            sourceIndex = hiddenNeurons.IndexOf(source);
+            auto it = __hiddenInsertIndex.find(source);
 
-            /* New nodes not created here because all the hidden nodes that are
-                connected to an input/hidden node are already expressed. */
-            if (sourceIndex != -1)  //only connect if hidden neuron already exists
-                connections.Add(new ConnectionGene(counter++, (uint)(sourceIndex + inputCount + outputCount), (uint)(targetIndex + inputCount), t.weight * HyperNEATParameters.weightRange, new float[] { t.x1, t.y1, t.x2, t.y2 }));
+            /*
+            New nodes not created here because all the hidden nodes that are
+                connected to an input/hidden node are already expressed.
+            */
+            if (it != __hiddenInsertIndex.end())  //only connect if hidden neuron already exists
+                sourceIndex = it->second;
+                connections.push_back(LinkGene(sourceIndex + inputCount + outputCount, targetIndex + inputCount, innovationCounter++, t.weight));
         }
-        targetIndex++;
+
     }
+    tempConnections.clear();
 }
 
 float EvolvableSubstrate::queryCPPN(float x1, float y1, float x2, float y2)
 {
+    std::vector<double> coordinates(4);
     coordinates[0] = x1;
     coordinates[1] = y1;
     coordinates[2] = x2;
     coordinates[3] = y2;
 
-    cppn.ClearSignals();
-    cppn.SetInputSignals(coordinates);
-    cppn.RecursiveActivation();
-
-    return genome.GetOutputSignal(0);
+    cppn->Input(coordinates);
+    cppn->RecursiveActivation();
+    std::vector<double> output = cppn->Output();
+    ASSERT(output.size() == 1);
+    return output[0];
 }
 
-void EvolvableSubstrate::getCPPNValues(std::vector<float> & l, QuadPoint & p)
+void EvolvableSubstrate::getCPPNValues(std::vector<float> & l, const QuadPoint & p)
 {
-    if (p && !p.childs.empty())
+    if (!p.childs.empty())
     {
         for (int i = 0; i < 4; i++)
         {
-            getCPPNValues(l, p->childs[i]);
+            getCPPNValues(l, p.childs[i]);
         }
     }
     else

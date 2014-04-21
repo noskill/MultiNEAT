@@ -38,6 +38,7 @@
 #include "Species.h"
 #include "Parameters.h"
 #include "Random.h"
+#include "EvolvableSubstrate.h"
 
 namespace py = boost::python;
 using namespace NEAT;
@@ -97,10 +98,14 @@ BOOST_PYTHON_MODULE(_MultiNEAT)
             .def("RandGaussClamped", &RNG::RandGaussClamped)
             ;
 
+    class_<ConnectionSet>("ConnectionSet", init<>())
+            .def("__iter__", iterator<ConnectionSet>())
+            .def("__getitem__", &ConnectionSet::operator[], boost::python::arg( "index" ),
+                 boost::python::return_internal_reference<>());
 
-///////////////////////////////////////////////////////////////////
-// Neural Network class
-///////////////////////////////////////////////////////////////////
+    class_<PointD>("PointD", init<uint, uint>())
+            .def("__getitem__", &PointD::operator[], boost::python::arg( "index" ),
+                 return_value_policy<return_by_value>());
 
     class_<Connection>("Connection", init<>())
             .def_readonly("source_neuron_idx", &Connection::m_source_neuron_idx)
@@ -127,6 +132,10 @@ BOOST_PYTHON_MODULE(_MultiNEAT)
     void (NeuralNetwork::*NN_Input_numpy)(numeric::array&) = &NeuralNetwork::Input_numpy;
     void (Parameters::*Parameters_Save)(const char*) = &Parameters::Save;
     int (Parameters::*Parameters_Load)(const char*) = &Parameters::Load;
+
+    ///////////////////////////////////////////////////////////////////
+    // Neural Network class
+    ///////////////////////////////////////////////////////////////////
 
     class_<NeuralNetwork>("NeuralNetwork", init<>())
 
@@ -165,6 +174,8 @@ BOOST_PYTHON_MODULE(_MultiNEAT)
 
             .def("Clear",
             &NeuralNetwork::Clear)
+            .def("RecursiveActivation",
+            &NeuralNetwork::RecursiveActivation)
             .def("Save",
             NN_Save)
             .def("Load",
@@ -197,7 +208,7 @@ BOOST_PYTHON_MODULE(_MultiNEAT)
 
             .def("NumNeurons", &Genome::NumNeurons)
             .def("NumLinks", &Genome::NumLinks)
-            .def("NumInputs", &Genome::NumInputs)
+            .def("NumInputs", &Genome::NumMinCPPNInputs)
             .def("NumOutputs", &Genome::NumOutputs)
 
             .def("GetFitness", &Genome::GetFitness)
@@ -208,11 +219,12 @@ BOOST_PYTHON_MODULE(_MultiNEAT)
             .def("BuildPhenotype", &Genome::BuildPhenotype)
             .def("DerivePhenotypicChanges", &Genome::DerivePhenotypicChanges)
             .def("BuildHyperNEATPhenotype", &Genome::BuildHyperNEATPhenotype)
+            .def("BuildHyperNEATPhenotype", &Genome::BuildHyperNEATESPhenotype)
 
             .def("IsEvaluated", &Genome::IsEvaluated)
             .def("SetEvaluated", &Genome::SetEvaluated)
             .def("ResetEvaluated", &Genome::ResetEvaluated)
-
+            .def("BuildHyperNEATESPhenotype", &Genome::BuildHyperNEATESPhenotype)
             .def("Save", Genome_Save)
 
             .def_pickle(Genome_pickle_suite())
@@ -264,6 +276,18 @@ BOOST_PYTHON_MODULE(_MultiNEAT)
             .def_readwrite("m_min_time_const", &Substrate::m_min_time_const)
             .def_readwrite("m_max_time_const", &Substrate::m_max_time_const)
             ;
+
+    ///////////////////////////////////////////////////////////////////
+    // EvolvableSubstrate class
+    ///////////////////////////////////////////////////////////////////
+
+        class_<EvolvableSubstrate>("EvolvableSubstrate", init<Parameters, list, list>())
+                .def("generateSubstrate", &EvolvableSubstrate::generateSubstrate)
+                .def("queryCPPN", &EvolvableSubstrate::queryCPPN)
+                .def("variance", &EvolvableSubstrate::variance)
+                .def("GetMinCPPNInputs", &EvolvableSubstrate::GetMinCPPNInputs)
+                .def("GetMinCPPNOutputs", &EvolvableSubstrate::GetMinCPPNOutputs)
+                ;
 
 
 ///////////////////////////////////////////////////////////////////

@@ -26,12 +26,12 @@
 ///////////////////////////////////////////////////////////////////////////////////////////
 
 #include <vector>
-#include "NeuralNetwork.h"
 
 #include <boost/python.hpp>
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/serialization/vector.hpp>
+#include "SubstrateBase.h"
 
 namespace py = boost::python;
 
@@ -41,12 +41,12 @@ namespace NEAT
 //-----------------------------------------------------------------------
 // The substrate describes the phenotype space that is used by HyperNEAT
 // It basically contains 3 lists of coordinates - for the nodes.
-class Substrate
+class Substrate: public BaseSubstrate
 {
 public:
-    std::vector< std::vector<double> > m_input_coords;
-    std::vector< std::vector<double> > m_hidden_coords;
-    std::vector< std::vector<double> > m_output_coords;
+    std::vector< std::vector<double> > _input_coords;
+    std::vector< std::vector<double> > _hidden_coords;
+    std::vector< std::vector<double> > _output_coords;
 
     // the substrate is made from leaky integrator neurons?
     bool m_leaky;
@@ -75,7 +75,7 @@ public:
     double m_min_time_const;
     double m_max_time_const;
 
-    Substrate(){};
+    Substrate()=default;
     Substrate(std::vector< std::vector<double> >& a_inputs,
               std::vector< std::vector<double> >& a_hidden,
               std::vector< std::vector<double> >& a_outputs );
@@ -83,12 +83,14 @@ public:
     // Construct from 3 Python lists of tuples
     Substrate(py::list a_inputs, py::list a_hidden, py::list a_outputs);
 
-    int GetMaxDims();
+    //dementionality of substrate
+    uint GetMaxDims();
 
     // Return the minimum input dimensionality of the CPPN
-    int GetMinCPPNInputs();
+    uint GetMinCPPNInputs();
+
     // Return the minimum output dimensionality of the CPPN
-    int GetMinCPPNOutputs();
+    uint GetMinCPPNOutputs();
 
     // Prints some info about itself
     void PrintInfo();

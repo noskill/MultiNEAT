@@ -738,7 +738,7 @@ Genome g_dummy; // empty genome
 Genome& Population::AccessGenomeByIndex(unsigned int const a_idx)
 {
     ASSERT(a_idx < m_Genomes.size());
-    int t_counter = 0;
+    uint t_counter = 0;
 
     for (unsigned int i = 0; i < m_Species.size(); i++)
     {
@@ -1065,7 +1065,6 @@ Genome* Population::Tick(Genome& a_deleted_genome)
 Genome Population::RemoveWorstIndividual()
 {
     unsigned int t_worst_idx=-1; // within the species
-    unsigned int t_worst_absolute_idx=0; // within the population
     unsigned int t_worst_species_idx=0; // within the population
     double       t_worst_fitness = DBL_MAX;
 
@@ -1085,7 +1084,6 @@ Genome Population::RemoveWorstIndividual()
                 t_worst_fitness = t_adjusted_fitness;
                 t_worst_idx = j;
                 t_worst_species_idx = i;
-                t_worst_absolute_idx = t_abs_counter;
                 t_genome = m_Species[i].m_Individuals[j];
             }
 

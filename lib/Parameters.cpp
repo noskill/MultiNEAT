@@ -714,11 +714,25 @@ int Parameters::Load(std::ifstream& a_DataFile)
 
         if (s == "CompatTreshChangeInterval_Evaluations")
             a_DataFile >> CompatTreshChangeInterval_Evaluations;
+
+        if (s == "InitialDepth")
+            a_DataFile >> InitialDepth;
+
+        if (s == "DivisionThreshold")
+            a_DataFile >> DivisionThreshold;
+
+        if (s == "VarianceThreshold")
+            a_DataFile >> VarianceThreshold;
+
+        if (s == "BandingThreshold")
+            a_DataFile >> BandingThreshold;
+
+        if (s == "ESIterations")
+            a_DataFile >> ESIterations;
     }
 
     return 0;
 }
-
 
 int Parameters::Load(const char* a_FileName)
 {
@@ -730,6 +744,7 @@ int Parameters::Load(const char* a_FileName)
     data.close();
     return result;
 }
+
 
 void Parameters::Save(const char* filename)
 {
@@ -839,11 +854,15 @@ void Parameters::Save(FILE* a_fstream)
     fprintf(a_fstream, "CompatTresholdModifier %3.20f\n", CompatTresholdModifier);
     fprintf(a_fstream, "CompatTreshChangeInterval_Generations %d\n", CompatTreshChangeInterval_Generations);
     fprintf(a_fstream, "CompatTreshChangeInterval_Evaluations %d\n", CompatTreshChangeInterval_Evaluations);
+    fprintf(a_fstream, "InitialDepth %u\n", InitialDepth);
+    fprintf(a_fstream, "MaximumDepth %u\n", MaximumDepth);
+    fprintf(a_fstream, "DivisionThreshold %3.20f\n", DivisionThreshold);
+    fprintf(a_fstream, "VarianceThreshold %3.20f\n", VarianceThreshold);
+    fprintf(a_fstream, "BandingThreshold %3.20f\n", BandingThreshold);
+    fprintf(a_fstream, "ESIterations %3.20f\n", ESIterations);
 
     fprintf(a_fstream, "NEAT_ParametersEnd\n");
 }
-
-
 
 
 } // namespace NEAT

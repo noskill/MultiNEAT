@@ -33,11 +33,19 @@
 #include <boost/python.hpp>
 #include <boost/python/numeric.hpp>
 #include <boost/python/tuple.hpp>
+#include <boost/multi_index_container.hpp>
+#include <boost/multi_index/random_access_index.hpp>
+#include <boost/multi_index/hashed_index.hpp>
+#include <boost/multi_index/member.hpp>
 
 namespace py = boost::python;
 
 #include <vector>
+#include <map>
 #include "Genes.h"
+#include "Point.h"
+
+
 
 namespace NEAT
 {
@@ -45,10 +53,10 @@ namespace NEAT
 class Connection
 {
 public:
-    unsigned short int m_source_neuron_idx;       // index of source neuron
-    unsigned short int m_target_neuron_idx;       // index of target neuron
-    double m_weight;                               // weight of the connection
-    double m_signal;                               // weight * input signal
+    unsigned int m_source_neuron_idx;       // index of source neuron
+    unsigned int m_target_neuron_idx;       // index of target neuron
+    mutable double m_weight;                               // weight of the connection
+    mutable double m_signal;                               // weight * input signal
 
     bool m_recur_flag; // recurrence flag for displaying purposes
     // can be ignored
@@ -75,6 +83,11 @@ public:
 class Neuron
 {
 public:
+    Neuron():
+        m_activesum(0.0), m_activation(0.0), m_a(0), m_b(0), m_timeconst(0), m_bias(0), m_substrate_coords(0.0, 0.0)
+    {
+    }
+
     double m_activesum;  // the synaptic input
     double m_activation; // the synaptic input passed through the activation function
 
@@ -85,9 +98,10 @@ public:
     // displaying and stuff
     double m_x, m_y, m_z;
     double m_sx, m_sy, m_sz;
-    std::vector<double> m_substrate_coords;
+    PointD m_substrate_coords;
     double m_split_y;
     NeuronType m_type;
+    NeuronType Type(){ return m_type;}
 
     // the sensitivity matrix of this neuron (for RTRL learning)
     std::vector< std::vector< double > > m_sensitivity_matrix;
@@ -106,8 +120,39 @@ public:
     }
 };
 
+struct ConnectionVector{};
+struct ConnectionSourceMap{};
+struct ConnectionTargetMap{};
+using namespace boost::multi_index;
+typedef boost::multi_index_container<
+  Connection,
+  indexed_by<
+    random_access<tag<ConnectionVector>>,  // keep insertion order
+
+    // hashed on source and target index
+    hashed_non_unique<tag<ConnectionSourceMap>, member<Connection, uint,&Connection::m_source_neuron_idx> >,
+    hashed_non_unique<tag<ConnectionTargetMap>, member<Connection, uint,&Connection::m_target_neuron_idx> >
+  >
+> ConnectionSet;
+
+/*
+class ConnectionSet: public __ConnectionSet{
+    Connection & __getitem__(uint idx) const{
+        return this->get<ConnectionVector>()[idx];
+    }
+
+    uint __len__(){
+        return this->get<ConnectionVector>();
+
+    }
+
+};
+*/
+
 class NeuralNetwork
 {
+
+
     /////////////////////
     // RTRL variables
     double m_total_error;
@@ -117,12 +162,14 @@ class NeuralNetwork
     /////////////////////
 
     // returns the index if that connection exists or -1 otherwise
-    int ConnectionExists(int a_to, int a_from);
+    int ConnectionExists(uint a_to, uint a_from);
+    uint m_Depth;
+    bool is_depth_ready;
 
 public:
 
     unsigned short m_num_inputs, m_num_outputs;
-    std::vector<Connection> m_connections; // array size - number of connections
+    ConnectionSet m_connections; // array size - number of connections
     std::vector<Neuron>     m_neurons;
 
     NeuralNetwork(bool a_Minimal); // if given false, the constructor will create a standard XOR network topology.
@@ -133,6 +180,7 @@ public:
 
     void ActivateFast();          // assumes unsigned sigmoids everywhere.
     void Activate();              // any activation functions are supported
+    void RecursiveActivation();
     void ActivateUseInternalBias(); // like Activate() but uses m_bias as well
     void ActivateLeaky(double step); // activates in leaky integrator mode
 
@@ -152,8 +200,11 @@ public:
     std::vector<double> Output();
 
     // accessor methods
-    void AddNeuron(const Neuron& a_n) { m_neurons.push_back( a_n ); }
-    void AddConnection(const Connection& a_c) { m_connections.push_back( a_c ); }
+    void AddNeuron(const Neuron a_n);
+    void AddConnection(const Connection a_c) {
+
+        m_connections.push_back( a_c );
+    }
     Connection GetConnectionByIndex(unsigned int a_idx) const
     {
         return m_connections[a_idx];
@@ -162,6 +213,7 @@ public:
     {
         return m_neurons[a_idx];
     }
+    void throwWrongSize(size_t actual, size_t expected);
     void SetInputOutputDimentions(const unsigned short a_i, const unsigned short a_o)
     {
         m_num_inputs = a_i;
@@ -175,7 +227,7 @@ public:
     {
         return m_num_outputs;
     }
-
+    unsigned int NumNeurons()const { return m_neurons.size(); }
     // clears the network and makes it a minimal one
     void Clear()
     {
@@ -192,9 +244,13 @@ public:
     // save/load from already opened files for reading/writing
     void Save(FILE* a_file);
     bool Load(std::ifstream& a_DataFile);
+
+    unsigned int CalculateDepth();
+    unsigned int NeuronDepth(unsigned int a_NeuronID, unsigned int a_Depth);
+    Neuron & GetNeuronByID(uint ID);
 };
 
-}; // namespace NEAT
+} // namespace NEAT
 
 
 
