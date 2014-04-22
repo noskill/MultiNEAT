@@ -109,28 +109,6 @@ Substrate::Substrate(py::list a_inputs, py::list a_hidden, py::list a_outputs)
 }
 
 
-uint Substrate::GetMinCPPNInputs()
-{
-    // determine the dimensionality across the entire substrate
-    uint cppn_inputs = GetMaxDims() * 2; // twice, because we query 2 points at a time
-
-    // the distance input
-    if (m_with_distance)
-        cppn_inputs += 1;
-
-    return cppn_inputs + 1; // always count the bias
-}
-
-
-uint Substrate::GetMinCPPNOutputs()
-{
-    if (m_leaky)
-        return 3;
-    else
-        return 1;
-}
-
-
 uint Substrate::GetMaxDims()
 {
     uint max_dims = 0;
@@ -146,6 +124,18 @@ uint Substrate::GetMaxDims()
     return max_dims;
 }
 
+unsigned int Substrate::GetMinCPPNInputs()
+{
+    uint min_input = SubstrateBase::GetMinCPPNInputs();
+
+    // the distance input
+    if (m_with_distance)
+        min_input += 1;
+
+    return min_input; // always count the bias
+}
+
+
 void Substrate::PrintInfo()
 {
     std::cerr << "Inputs: " << _input_coords.size() << "\n";
@@ -154,6 +144,13 @@ void Substrate::PrintInfo()
     std::cerr << "Dimensions: " << GetMinCPPNInputs() << "\n";
 }
 // namespace NEAT
+
+unsigned int Substrate::GetMinCPPNOutputs()
+{
+    if (m_leaky)
+        return 3;
+    return 1;
+}
 
 }
 

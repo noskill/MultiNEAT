@@ -17,7 +17,7 @@ namespace NEAT
 class NeuralNetwork;
 
 
-class EvolvableSubstrate: public BaseSubstrate
+class EvolvableSubstrate: public SubstrateBase
 {
 private:
     std::map<PointD, uint> __hiddenInsertIndex;
@@ -164,14 +164,6 @@ public:
         if (this->outputCoordinates.size())
             result = std::max((uint)this->outputCoordinates[0].size(), result);
         return result;
-    }
-
-    uint GetMinCPPNInputs(){
-        return PointD::SIZE;
-    }
-
-    uint GetMinCPPNOutputs(){
-        return 1;
     }
 };
 

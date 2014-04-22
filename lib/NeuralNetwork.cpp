@@ -977,6 +977,7 @@ unsigned int NeuralNetwork::CalculateDepth()
     }
 
     m_Depth = t_max_depth;
+    is_depth_ready = true;
     return m_Depth;
 }
 

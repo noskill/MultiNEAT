@@ -4,17 +4,18 @@
 namespace NEAT{
 
 
-class BaseSubstrate
+class SubstrateBase
 {
+public:
+
     // Return the minimum input dimensionality of the CPPN
-    virtual unsigned int GetMinCPPNInputs()=0;
-
-    // Return the minimum output dimensionality of the CPPN
-    virtual unsigned int GetMinCPPNOutputs()=0;
-
     virtual unsigned int GetMinCPPNInputs();
 
-    virtual unsigned int GetMaxDims();
+    // Return the minimum output dimensionality of the CPPN
+    virtual unsigned int GetMinCPPNOutputs();
+protected:
+
+    virtual unsigned int GetMaxDims()=0;
 };
 
 }

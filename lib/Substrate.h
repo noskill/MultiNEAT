@@ -41,7 +41,7 @@ namespace NEAT
 //-----------------------------------------------------------------------
 // The substrate describes the phenotype space that is used by HyperNEAT
 // It basically contains 3 lists of coordinates - for the nodes.
-class Substrate: public BaseSubstrate
+class Substrate: public SubstrateBase
 {
 public:
     std::vector< std::vector<double> > _input_coords;
@@ -86,11 +86,9 @@ public:
     //dementionality of substrate
     uint GetMaxDims();
 
-    // Return the minimum input dimensionality of the CPPN
-    uint GetMinCPPNInputs();
+    unsigned int GetMinCPPNInputs();
 
-    // Return the minimum output dimensionality of the CPPN
-    uint GetMinCPPNOutputs();
+    unsigned int GetMinCPPNOutputs();
 
     // Prints some info about itself
     void PrintInfo();

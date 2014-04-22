@@ -263,11 +263,13 @@ void EvolvableSubstrate::generateSubstrate(NeuralNetwork cppn)
 
 float EvolvableSubstrate::queryCPPN(float x1, float y1, float x2, float y2)
 {
-    std::vector<double> coordinates(4);
-    coordinates[0] = x1;
-    coordinates[1] = y1;
-    coordinates[2] = x2;
-    coordinates[3] = y2;
+    std::vector<double> coordinates;
+    coordinates.reserve(5);
+    coordinates.push_back(x1);
+    coordinates.push_back(y1);
+    coordinates.push_back(x2);
+    coordinates.push_back(y2);
+    coordinates.push_back(1.0);  // bias
 
     cppn->Input(coordinates);
     cppn->RecursiveActivation();

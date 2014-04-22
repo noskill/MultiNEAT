@@ -1,0 +1,50 @@
+#Evolvable-Substrate HyperNEAT settings
+[HyperNEAT]
+InitialDepth = 3
+MaximumDepth = 4
+DivisionThreshold = .03
+VarianceThreshold = .03
+BandingThreshold = 0.3
+ESIterations = 1
+
+PopulationSize = 120
+
+DynamicCompatibility = True
+CompatTreshold = 2.0
+YoungAgeTreshold = 15
+SpeciesMaxStagnation = 100
+OldAgeTreshold = 35
+MinSpecies = 5
+MaxSpecies = 25
+RouletteWheelSelection = False
+
+MutateRemLinkProb = 0.02
+RecurrentProb = 0.0
+OverallMutationRate = 0.15
+MutateAddLinkProb = 0.08
+MutateAddNeuronProb = 0.01
+MutateWeightsProb = 0.90
+MaxWeight = 8.0
+WeightMutationMaxPower = 0.2
+WeightReplacementMaxPower = 1.0
+
+MutateActivationAProb = 0.0
+ActivationAMutationMaxPower = 0.5
+MinActivationA = 0.05
+MaxActivationA = 6.0
+
+MutateNeuronActivationTypeProb = 0.03
+
+# Probabilities for a particular activation function appearance
+ActivationFunction_SignedSigmoid_Prob = 0.0
+ActivationFunction_UnsignedSigmoid_Prob = 0.0
+ActivationFunction_Tanh_Prob = 1.0
+ActivationFunction_TanhCubic_Prob = 0.0
+ActivationFunction_SignedStep_Prob = 1.0
+ActivationFunction_UnsignedStep_Prob = 0.0
+ActivationFunction_SignedGauss_Prob = 1.0
+ActivationFunction_UnsignedGauss_Prob = 0.0
+ActivationFunction_Abs_Prob = 0.0
+ActivationFunction_SignedSine_Prob = 1.0
+ActivationFunction_UnsignedSine_Prob = 0.0
+ActivationFunction_Linear_Prob = 1.0

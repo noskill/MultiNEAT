@@ -664,7 +664,7 @@ void Genome::BuildHyperNEATESPhenotype(NeuralNetwork& net, EvolvableSubstrate& s
 
     // Create the neural network that will represent the CPPN
     NeuralNetwork t_temp_phenotype = buildTempPhenotype();
-    t_temp_phenotype.SetInputOutputDimentions(4, 1);
+    t_temp_phenotype.SetInputOutputDimentions(subst.GetMinCPPNInputs(), subst.GetMinCPPNOutputs());
     subst.generateSubstrate(t_temp_phenotype);
 
     // Inputs
