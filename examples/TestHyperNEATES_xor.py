@@ -18,7 +18,7 @@ params = NEAT.loadParameters('params.txt')
 
 
 # the simple 2D substrate with 3 input points, 2 hidden and 1 output for XOR 
-substrate = NEAT.EvolvableSubstrate(params, [(-1, -1), (-1, 1), (-1, 0)],
+substrate = NEAT.EvolvableSubstrate(params, [(-1, -1), (-1, 0), (-1, 1)],
                            [(1, 0)])
 
 # let's set the activation functions
@@ -29,13 +29,15 @@ substrate.m_outputs_nodes_activation = NEAT.ActivationFunction.UNSIGNED_SIGMOID
 cv2.namedWindow('CPPN', 0)
 cv2.namedWindow('NN', 0)
 
+
 def evaluate(genome):
     net = NEAT.NeuralNetwork()
     try:
         genome.BuildHyperNEATESPhenotype(net, substrate)
 
         error = 0
-        depth = 2
+        #depth = net.CalculateDepth();
+        depth = 2;
 
         # do stuff and return the fitness
         net.Flush()
@@ -63,7 +65,9 @@ def evaluate(genome):
         o = net.Output()
         error += abs(o[0] - 0)
 
-        return (4 - error)**2
+        result = ajustCoeff(net) * (4 - error)**2
+        #result = (4 - error)**2
+        return result
 
     except Exception as ex:
         print 'Exception:', ex
@@ -74,8 +78,20 @@ def evaluate(genome):
 rng = NEAT.RNG()
 rng.TimeSeed()
 
+def ajustCoeff(nn):
+    neuron_count = len(nn.neurons)
+
+    result = 1.0
+    if 10 < neuron_count <= 15:
+      result = 0.90
+    elif 15 < neuron_count < 20:
+      result = 0.80
+    elif neuron_count >= 20:
+      result = 0.65
+    return result
+
 def getbest():
-    g = NEAT.Genome(0, 
+    g = NEAT.Genome(5, 
                     substrate.GetMinCPPNInputs(), 
                     0, 
                     substrate.GetMinCPPNOutputs(), 
@@ -84,12 +100,12 @@ def getbest():
                     NEAT.ActivationFunction.SIGNED_GAUSS, 
                     0, 
                     params)
-
     pop = NEAT.Population(g, params, True, 1.0)
 
     for generation in range(1000):
         genome_list = NEAT.GetGenomeList(pop)
-    #    fitnesses = NEAT.EvaluateGenomeList_Parallel(genome_list, evaluate)
+        #fitnesses = NEAT.EvaluateGenomeList_Parallel(genome_list, evaluate, cores=3, display=False)
+
         fitnesses = NEAT.EvaluateGenomeList_Serial(genome_list, evaluate, display=False)
         [genome.SetFitness(fitness) for genome, fitness in zip(genome_list, fitnesses)]
 
@@ -114,7 +130,9 @@ def getbest():
         cv2.waitKey(1)
 
         pop.Epoch()
-#        print "Generation:", generation
+        print "Generation:", generation
+        print "best:", best
+        print "depth:", net.CalculateDepth()
         generations = generation
         if best > 15.5:
             break

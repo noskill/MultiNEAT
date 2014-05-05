@@ -144,6 +144,9 @@ public:
     // copy constructor
     Genome(const Genome& a_g);
 
+    // copy constructor
+    Genome(Genome& a_g);
+
     // assignment operator
     Genome& operator=(const Genome& a_g);
 
@@ -273,7 +276,7 @@ public:
     ////////////
     void BuildHyperNEATPhenotype(NeuralNetwork& net, Substrate& subst);
 
-    void BuildHyperNEATESPhenotype(NeuralNetwork& net, EvolvableSubstrate& subst);
+    void BuildHyperNEATESPhenotype(NeuralNetwork& net, EvolvableSubstrate & subst);
 
     // Saves this genome to a file
     void Save(const char* a_filename);
@@ -405,6 +408,8 @@ public:
         ar & m_Evaluated;
         //ar & m_PhenotypeBehavior; // todo: think about how we will handle the behaviors with pickle
     }
+
+    void RemoveDeadEnd(NeuralNetwork & net);
 };
 
 
@@ -425,7 +430,7 @@ struct Genome_pickle_suite : py::pickle_suite
         std::istringstream is (st);
 
         boost::archive::binary_iarchive ia (is);
-        ia >> a;
+        //ia >> a;
     }
 };
 

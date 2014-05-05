@@ -132,6 +132,7 @@ inline double af_square_signed(double aX, double aHighPulseSize, double aLowPuls
 {
     return 0.0;    // TODO
 }
+
 inline double af_square_unsigned(double aX, double aHighPulseSize, double aLowPulseSize)
 {
     return 0.0;    // TODO
@@ -328,6 +329,7 @@ void NeuralNetwork::ActivateFast()
 
 void NeuralNetwork::Activate()
 {
+    size_t s = m_connections.size();
     // Loop connections. Calculate each connection's output signal.
     for (unsigned int i = 0; i < m_connections.size(); i++)
     {
@@ -347,62 +349,64 @@ void NeuralNetwork::Activate()
     // and store the result back to nodes_activations
     // also skip inputs since they do not get an activation
     for (unsigned int i = m_num_inputs; i < m_neurons.size(); i++)
-    {
-        double x = m_neurons[i].m_activesum;
-        m_neurons[i].m_activesum = 0;
-        // Apply the activation function
-        double y = 0.0;
-        switch (m_neurons[i].m_activation_function_type)
-        {
-        case SIGNED_SIGMOID:
-            y = af_sigmoid_signed(x, m_neurons[i].m_a, m_neurons[i].m_b);
-            break;
-        case UNSIGNED_SIGMOID:
-            y = af_sigmoid_unsigned(x, m_neurons[i].m_a, m_neurons[i].m_b);
-            break;
-        case TANH:
-            y = af_tanh(x, m_neurons[i].m_a, m_neurons[i].m_b);
-            break;
-        case TANH_CUBIC:
-            y = af_tanh_cubic(x, m_neurons[i].m_a, m_neurons[i].m_b);
-            break;
-        case SIGNED_STEP:
-            y = af_step_signed(x, m_neurons[i].m_b);
-            break;
-        case UNSIGNED_STEP:
-            y = af_step_unsigned(x, m_neurons[i].m_b);
-            break;
-        case SIGNED_GAUSS:
-            y = af_gauss_signed(x, m_neurons[i].m_a, m_neurons[i].m_b);
-            break;
-        case UNSIGNED_GAUSS:
-            y = af_gauss_unsigned(x, m_neurons[i].m_a, m_neurons[i].m_b);
-            break;
-        case ABS:
-            y = af_abs(x, m_neurons[i].m_b);
-            break;
-        case SIGNED_SINE:
-            y = af_sine_signed(x, m_neurons[i].m_a, m_neurons[i].m_b);
-            break;
-        case UNSIGNED_SINE:
-            y = af_sine_unsigned(x, m_neurons[i].m_a, m_neurons[i].m_b);
-            break;
-        case SIGNED_SQUARE:
-            y = af_square_signed(x, m_neurons[i].m_a, m_neurons[i].m_b);
-            break;
-        case UNSIGNED_SQUARE:
-            y = af_square_unsigned(x, m_neurons[i].m_a, m_neurons[i].m_b);
-            break;
-        case LINEAR:
-            y = af_linear(x, m_neurons[i].m_b);
-            break;
-        default:
-            y = af_sigmoid_unsigned(x, m_neurons[i].m_a, m_neurons[i].m_b);
-            break;
-        }
-        m_neurons[i].m_activation = y;
-    }
+        CalculateNeuronActivation(i);
 
+}
+
+void NeuralNetwork::CalculateNeuronActivation(size_t i){
+    double x = m_neurons[i].m_activesum;
+    m_neurons[i].m_activesum = 0;
+    // Apply the activation function
+    double y = 0.0;
+    switch (m_neurons[i].m_activation_function_type)
+    {
+    case SIGNED_SIGMOID:
+        y = af_sigmoid_signed(x, m_neurons[i].m_a, m_neurons[i].m_b);
+        break;
+    case UNSIGNED_SIGMOID:
+        y = af_sigmoid_unsigned(x, m_neurons[i].m_a, m_neurons[i].m_b);
+        break;
+    case TANH:
+        y = af_tanh(x, m_neurons[i].m_a, m_neurons[i].m_b);
+        break;
+    case TANH_CUBIC:
+        y = af_tanh_cubic(x, m_neurons[i].m_a, m_neurons[i].m_b);
+        break;
+    case SIGNED_STEP:
+        y = af_step_signed(x, m_neurons[i].m_b);
+        break;
+    case UNSIGNED_STEP:
+        y = af_step_unsigned(x, m_neurons[i].m_b);
+        break;
+    case SIGNED_GAUSS:
+        y = af_gauss_signed(x, m_neurons[i].m_a, m_neurons[i].m_b);
+        break;
+    case UNSIGNED_GAUSS:
+        y = af_gauss_unsigned(x, m_neurons[i].m_a, m_neurons[i].m_b);
+        break;
+    case ABS:
+        y = af_abs(x, m_neurons[i].m_b);
+        break;
+    case SIGNED_SINE:
+        y = af_sine_signed(x, m_neurons[i].m_a, m_neurons[i].m_b);
+        break;
+    case UNSIGNED_SINE:
+        y = af_sine_unsigned(x, m_neurons[i].m_a, m_neurons[i].m_b);
+        break;
+    case SIGNED_SQUARE:
+        y = af_square_signed(x, m_neurons[i].m_a, m_neurons[i].m_b);
+        break;
+    case UNSIGNED_SQUARE:
+        y = af_square_unsigned(x, m_neurons[i].m_a, m_neurons[i].m_b);
+        break;
+    case LINEAR:
+        y = af_linear(x, m_neurons[i].m_b);
+        break;
+    default:
+        y = af_sigmoid_unsigned(x, m_neurons[i].m_a, m_neurons[i].m_b);
+        break;
+    }
+    m_neurons[i].m_activation = y;
 }
 
 void NeuralNetwork::ActivateUseInternalBias()
@@ -592,7 +596,7 @@ void NeuralNetwork::FlushCube()
 }
 
 void NeuralNetwork::throwWrongSize(size_t actual, size_t expected){
-    throw std::runtime_error(boost::str(boost::format("input size %0% is not equal expected %1%") % actual % expected));
+    throw std::runtime_error(boost::str(boost::format("input size %1% is not equal expected %2%") % actual % expected));
 }
 
 void NeuralNetwork::Input(std::vector<double>& a_Inputs)
@@ -611,14 +615,14 @@ void NeuralNetwork::Input_python_list(py::list& a_Inputs)
     size_t len = py::len(a_Inputs);
     std::vector<double> inp;
     inp.resize(len);
-    for(int i=0; i<len; i++)
+    for(uint i=0; i<len; i++)
         inp[i] = py::extract<double>(a_Inputs[i]);
 
     // if the number of passed inputs differs from the actual number of inputs,
     // clip them to fit.
     if (inp.size() > m_num_inputs)
         inp.resize(m_num_inputs);
-    else
+    if (inp.size() < m_num_inputs)
         throwWrongSize(len, m_num_inputs);
     Input(inp);
 }
@@ -1010,6 +1014,8 @@ unsigned int NeuralNetwork::NeuronDepth(unsigned int a_NeuronID, unsigned int a_
         unsigned int t_current_depth = NeuronDepth(t_link.m_source_neuron_idx, a_Depth + 1);
         if (t_current_depth > t_max_depth)
             t_max_depth = t_current_depth;
+        if (t_max_depth >= 16)
+            return 16;
     }
 
     return t_max_depth;
@@ -1017,14 +1023,98 @@ unsigned int NeuralNetwork::NeuronDepth(unsigned int a_NeuronID, unsigned int a_
 
 void NeuralNetwork::AddNeuron(const Neuron a_n) {
     m_neurons.push_back( a_n );
+    this->_activated.push_back(false);
+    this->_inActivation.push_back(false);
 }
 
-
 void NeuralNetwork::RecursiveActivation(){
-    uint dp = this->CalculateDepth();
-    for(uint j=0; j < dp; j++){
-        this->Activate();
+    // make a list of all output IDs
+    std::vector<unsigned int> t_output_ids;
+    std::vector<unsigned int> t_input_ids;
+    for(unsigned int i=0; i < NumNeurons(); i++)
+    {
+        if (m_neurons[i].Type() == OUTPUT)
+        {
+            t_output_ids.push_back(i);
+        }
+        if (m_neurons[i].Type() == INPUT)
+        {
+            t_input_ids.push_back(i);
+        }
+
     }
+
+   // Initialize boolean arrays and set the last activation signal, but only if it isn't an input (these have already been set when the input is activated)
+   for (uint i = 0; i < this->NumNeurons(); i++)
+   {
+        if (m_neurons[i].Type() == INPUT || m_neurons[i].Type() == BIAS)
+            // Set as activated if i is an input node, otherwise ensure it is unactivated (false)
+            _activated[i] = true;
+        else
+            _activated[i] = false;
+       this->_inActivation[i] = false;
+   }
+
+   // Get each output node activation recursively
+   for(uint i=0; i<t_output_ids.size(); i++)
+       RecursiveActivateNode(t_output_ids[i]);
+}
+
+void NeuralNetwork::RecursiveActivateNode(int a_NeuronID)
+{
+   // If we've reached an input node we return since the signal is already set
+   if (this->_activated[a_NeuronID])
+   {
+       this->_inActivation[a_NeuronID] = false;
+       return;
+   }
+
+   // Mark that the node is currently being calculated
+   this->_inActivation[a_NeuronID] = true;
+
+
+   // Find all links outputting to this neuron ID
+   auto t_inputting_links_idx = m_connections.get<ConnectionTargetMap>().equal_range(a_NeuronID);
+
+
+   // Adjacency list in reverse holds incoming connections, go through each one and activate it
+   for (auto c_it=t_inputting_links_idx.first; c_it!=t_inputting_links_idx.second; c_it++)
+   {
+       //{ Region recurrant connection handling - not applicable in our implementation
+       // If this node is currently being activated then we have reached a cycle, or recurrant connection. Use the previous activation in this case
+       //m_source_neuron_idx
+       //m_target_neuron_idx
+       if (!(this->_inActivation[c_it->m_source_neuron_idx]))
+       /*
+       {
+           c_it->neuronSignalsBeingProcessed[currentNode] += this.lastActivation[crntAdjNode] * this.adjacentMatrix[crntAdjNode, currentNode];
+       }*/
+
+       // Otherwise proceed as normal
+       //else
+       {
+           // Recurse if this neuron has not been activated yet
+           if (!this->_activated[c_it->m_source_neuron_idx]){
+               RecursiveActivateNode(c_it->m_source_neuron_idx);
+            }
+           // Add it to the new activation
+           this->m_neurons[a_NeuronID].m_activesum += m_neurons[c_it->m_source_neuron_idx].m_activation * c_it->m_weight;
+       }
+       //calculate activation
+
+
+       //} endregion
+   }
+   // Set this signal after running it through the activation function
+
+    CalculateNeuronActivation(a_NeuronID);
+
+   // Mark this neuron as completed
+   this->_activated[a_NeuronID] = true;
+
+   // This is no longer being calculated (for cycle detection)
+   this->_inActivation[a_NeuronID] = false;
+
 }
 
 

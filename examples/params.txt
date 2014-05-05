@@ -1,22 +1,24 @@
 #Evolvable-Substrate HyperNEAT settings
 [HyperNEAT]
 InitialDepth = 3
-MaximumDepth = 4
+MaximumDepth = 3
 DivisionThreshold = .03
 VarianceThreshold = .03
 BandingThreshold = 0.3
 ESIterations = 1
 
-PopulationSize = 120
+PopulationSize = 150
 
 DynamicCompatibility = True
 CompatTreshold = 2.0
 YoungAgeTreshold = 15
-SpeciesMaxStagnation = 100
+SpeciesMaxStagnation = 44
 OldAgeTreshold = 35
 MinSpecies = 5
-MaxSpecies = 25
+MaxSpecies = 35
 RouletteWheelSelection = False
+OldAgePenalty = 0.95
+YoungAgeFitnessBoost = 1.1
 
 MutateRemLinkProb = 0.02
 RecurrentProb = 0.0

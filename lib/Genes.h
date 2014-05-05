@@ -142,10 +142,10 @@ public:
     ////////////////
     LinkGene(int inId, int outId, int innovId, double weight, bool isReccurent = false):
         m_FromNeuronID(inId), m_ToNeuronID(outId), m_InnovationID(innovId), m_Weight(weight), m_IsRecurrent(isReccurent)
-    {}
+    {
+    }
 
-    LinkGene()
-    {}
+    LinkGene()=delete;
 
     // assigment operator
     LinkGene& operator =(const LinkGene& a_g)

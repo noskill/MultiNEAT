@@ -46,6 +46,7 @@ public:
     /////////////////////
 
 
+
     ////////////////////
     // Basic parameters
     ////////////////////
@@ -198,7 +199,7 @@ public:
     bool SplitLoopedRecurrent;
 
     // Maximum number of tries to find a link to split
-    int NeuronTries;
+    //int NeuronTries;
 
     // Probability for a baby to be mutated with the Add-Link mutation
     double MutateAddLinkProb;

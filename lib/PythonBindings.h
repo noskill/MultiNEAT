@@ -101,7 +101,8 @@ BOOST_PYTHON_MODULE(_MultiNEAT)
     class_<ConnectionSet>("ConnectionSet", init<>())
             .def("__iter__", iterator<ConnectionSet>())
             .def("__getitem__", &ConnectionSet::operator[], boost::python::arg( "index" ),
-                 boost::python::return_internal_reference<>());
+                 boost::python::return_internal_reference<>())
+            .def("__len__", &ConnectionSet::size);
 
     class_<PointD>("PointD", init<uint, uint>())
             .def("__getitem__", &PointD::operator[], boost::python::arg( "index" ),
@@ -188,6 +189,9 @@ BOOST_PYTHON_MODULE(_MultiNEAT)
             .def("Output",
             &NeuralNetwork::Output)
 
+            .def("RecursiveActivation", &NeuralNetwork::RecursiveActivation)
+            .def("CalculateDepth", &NeuralNetwork::CalculateDepth)
+
             .def_readwrite("neurons", &NeuralNetwork::m_neurons)
             .def_readonly("connections", &NeuralNetwork::m_connections)
             ;
@@ -219,12 +223,12 @@ BOOST_PYTHON_MODULE(_MultiNEAT)
             .def("BuildPhenotype", &Genome::BuildPhenotype)
             .def("DerivePhenotypicChanges", &Genome::DerivePhenotypicChanges)
             .def("BuildHyperNEATPhenotype", &Genome::BuildHyperNEATPhenotype)
-            .def("BuildHyperNEATPhenotype", &Genome::BuildHyperNEATESPhenotype)
+            .def("BuildHyperNEATESPhenotype", &Genome::BuildHyperNEATESPhenotype)
 
             .def("IsEvaluated", &Genome::IsEvaluated)
             .def("SetEvaluated", &Genome::SetEvaluated)
             .def("ResetEvaluated", &Genome::ResetEvaluated)
-            .def("BuildHyperNEATESPhenotype", &Genome::BuildHyperNEATESPhenotype)
+
             .def("Save", Genome_Save)
 
             .def_pickle(Genome_pickle_suite())
@@ -234,7 +238,7 @@ BOOST_PYTHON_MODULE(_MultiNEAT)
 // Species class
 ///////////////////////////////////////////////////////////////////
 
-    class_<Species>("Species", init<Genome, int>())
+    class_<Species>("Species", init<Genome const  &, int>())
             .def("GetLeader", &Species::GetLeader)
             .def("NumIndividuals", &Species::NumIndividuals)
             .def("GensNoImprovement", &Species::GensNoImprovement)
@@ -281,7 +285,7 @@ BOOST_PYTHON_MODULE(_MultiNEAT)
     // EvolvableSubstrate class
     ///////////////////////////////////////////////////////////////////
 
-        class_<EvolvableSubstrate>("EvolvableSubstrate", init<Parameters, list, list>())
+        class_<EvolvableSubstrate>("EvolvableSubstrate", init<const Parameters&, list, list>())
                 .def("generateSubstrate", &EvolvableSubstrate::generateSubstrate)
                 .def("queryCPPN", &EvolvableSubstrate::queryCPPN)
                 .def("variance", &EvolvableSubstrate::variance)
@@ -294,7 +298,7 @@ BOOST_PYTHON_MODULE(_MultiNEAT)
 // Population class
 ///////////////////////////////////////////////////////////////////
 
-    class_<Population>("Population", init<Genome, Parameters, bool, double>())
+    class_<Population>("Population", init<const Genome  &, Parameters*, bool, double>())
             .def(init<char*>())
             .def("Epoch", &Population::Epoch)
             .def("Save", &Population::Save)
@@ -383,6 +387,13 @@ BOOST_PYTHON_MODULE(_MultiNEAT)
             .def_readwrite("MutateNeuronBiasesProb", &Parameters::MutateNeuronBiasesProb)
             .def_readwrite("MinNeuronTimeConstant", &Parameters::MinNeuronTimeConstant)
             .def_readwrite("MaxNeuronTimeConstant", &Parameters::MaxNeuronTimeConstant)
+            .def_readwrite("InitialDepth", &Parameters::InitialDepth)
+            .def_readwrite("MaximumDepth", &Parameters::MaximumDepth)
+            .def_readwrite("BandingThreshold", &Parameters::BandingThreshold)
+            .def_readwrite("ESIterations", &Parameters::ESIterations)
+            .def_readwrite("SpeciesMaxStagnation", &Parameters::SpeciesMaxStagnation)
+            .def_readwrite("DivisionThreshold", &Parameters::DivisionThreshold)
+            .def_readwrite("VarianceThreshold", &Parameters::VarianceThreshold)
             .def_readwrite("MinNeuronBias", &Parameters::MinNeuronBias)
             .def_readwrite("MaxNeuronBias", &Parameters::MaxNeuronBias)
             .def_readwrite("MutateNeuronActivationTypeProb", &Parameters::MutateNeuronActivationTypeProb)

@@ -20,33 +20,16 @@ class NeuralNetwork;
 class EvolvableSubstrate: public SubstrateBase
 {
 private:
-    std::map<PointD, uint> __hiddenInsertIndex;
-    std::map<PointD, uint> __inputInsertIndex;
-    std::map<PointD, uint> __outputInsertIndex;
+
+    std::map<PointD, uint> __InsertIndex;
 
 public:
- //   bool m_leaky = false;
- //   bool m_with_distance = false;
     NEAT::ActivationFunction m_hidden_nodes_activation = NEAT::UNSIGNED_SIGMOID;
     NEAT::ActivationFunction m_output_nodes_activation = NEAT::UNSIGNED_SIGMOID;
-    /*
-    bool m_allow_input_hidden_links = true;
-    bool m_allow_input_output_links = true;
-    bool m_allow_hidden_hidden_links = true;
-    bool m_allow_hidden_output_links = true;
-    bool m_allow_output_hidden_links = true;
-    bool m_allow_output_output_links = true;
-    bool m_allow_looped_hidden_links = true;
-    bool m_allow_looped_output_links = true;
-    float m_link_threshold = 0.2;
-    float m_max_weight_and_bias = 5.0;
-    float m_min_time_const = 0.1;
-    float m_max_time_const = 1.0;*/
-
-    std::vector<PointD> inputCoordinates;
-    std::vector<PointD> hiddenCoordinates;
-    std::vector<PointD> outputCoordinates;
-    std::vector<LinkGene> connections;
+    std::vector<PointD> Coordinates;
+    std::vector<LinkGene> m_connections;
+    uint inputCount;
+    uint outputCount;
 
     NeuralNetwork * cppn;
 
@@ -74,14 +57,9 @@ public:
         float x1, y1, x2, y2;
         //public PointF start, end;
         float weight;
-        TempConnection(float x1, float y1, float x2, float y2, float weight)
+        TempConnection(float _x1, float _y1, float _x2, float _y2, float _weight):
+        x1 (_x1), y1 (_y1), x2(_x2), y2(_y2), weight(_weight)
         {
-        //    start = new PointF(x1, y1);
-            this->x1 = x1;
-            this->y1 = y1;
-            this->x2 = x2;
-            this->y2 = y2;
-            this->weight = weight;
         }
     };
 
@@ -144,7 +122,7 @@ public:
         return v;
     }
 
-    float queryCPPN(float x1, float y1, float x2, float y2);
+    double queryCPPN(float x1, float y1, float x2, float y2);
 
     /*
      * The main method that generations a list of ANN connections based on the information in the
@@ -157,14 +135,19 @@ public:
     //dementionality of substrate
     uint GetMaxDims(){
         uint result = 0;
-        if (this->inputCoordinates.size())
-            result = std::max((uint)this->inputCoordinates[0].size(), result);
-        if (this->hiddenCoordinates.size())
-            result = std::max((uint)this->hiddenCoordinates[0].size(), result);
-        if (this->outputCoordinates.size())
-            result = std::max((uint)this->outputCoordinates[0].size(), result);
+        if (this->Coordinates.size()){
+            result = std::max((uint)Coordinates[0].size(), result);
+        }
         return result;
     }
+
+    std::map<PointD, uint> getHiddenPoints();
+
+    //debug and test functions
+
+    void checkConnections();
+
+    bool pointExists(size_t neuronId);
 };
 
 }

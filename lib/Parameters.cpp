@@ -796,7 +796,7 @@ void Parameters::Save(FILE* a_fstream)
     fprintf(a_fstream, "MutateAddNeuronProb %3.20f\n", MutateAddNeuronProb);
     fprintf(a_fstream, "SplitRecurrent %s\n", SplitRecurrent==true?"true":"false");
     fprintf(a_fstream, "SplitLoopedRecurrent %s\n", SplitLoopedRecurrent==true?"true":"false");
-    fprintf(a_fstream, "NeuronTries %d\n", NeuronTries);
+    //fprintf(a_fstream, "NeuronTries %d\n", NeuronTries);
     fprintf(a_fstream, "MutateAddLinkProb %3.20f\n", MutateAddLinkProb);
     fprintf(a_fstream, "MutateAddLinkFromBiasProb %3.20f\n", MutateAddLinkFromBiasProb);
     fprintf(a_fstream, "MutateRemLinkProb %3.20f\n", MutateRemLinkProb);

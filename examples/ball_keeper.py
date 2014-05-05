@@ -35,6 +35,58 @@ collision_type_nn = 1
 collision_type_ball = 2
 collision_type_floor = 3
 
+
+params = NEAT.loadParameters('params.txt')
+params.PopulationSize = 1000
+params.DynamicCompatibility = True
+params.AllowClones = True
+params.CompatTreshold = 5.0
+params.CompatTresholdModifier = 0.3
+params.YoungAgeTreshold = 15
+params.SpeciesMaxStagnation = 100
+params.OldAgeTreshold = 35
+params.MinSpecies = 5
+params.MaxSpecies = 250
+params.RouletteWheelSelection = True
+params.RecurrentProb = 0.25
+params.OverallMutationRate = 0.33
+params.MutateWeightsProb = 0.90
+params.WeightMutationMaxPower = 1.0
+params.WeightReplacementMaxPower = 5.0
+params.MutateWeightsSevereProb = 0.5
+params.WeightMutationRate = 0.75
+params.MaxWeight = 20
+params.MutateAddNeuronProb = 0.01
+params.MutateAddLinkProb = 0.05
+params.MutateRemLinkProb = 0.00
+
+
+substrate = NEAT.EvolvableSubstrate(params, zip([-1] * 6, np.linspace(-1,1,6)),
+                           [(1, -1), (1, 1) ])
+
+substrate.m_allow_input_hidden_links = False
+substrate.m_allow_input_output_links = False
+substrate.m_allow_hidden_hidden_links = False
+substrate.m_allow_hidden_output_links = False
+substrate.m_allow_output_hidden_links = False
+substrate.m_allow_output_output_links = False
+substrate.m_allow_looped_hidden_links = False
+substrate.m_allow_looped_output_links = False
+
+# let's configure it a bit to avoid recurrence in the substrate
+substrate.m_allow_input_hidden_links = True
+substrate.m_allow_input_output_links = True
+substrate.m_allow_hidden_output_links = True
+substrate.m_allow_hidden_hidden_links = True
+# let's set the activation functions
+substrate.m_hidden_nodes_activation = NEAT.ActivationFunction.TANH
+substrate.m_outputs_nodes_activation = NEAT.ActivationFunction.UNSIGNED_SIGMOID
+
+# when to output a link and max weight
+substrate.m_link_threshold = 0.2
+substrate.m_max_weight = 8.0
+
+import pdb;pdb.set_trace()
 class NN_agent:
     def __init__(self, space, brain, start_x):
         self.startpos = (start_x, 80)
@@ -90,7 +142,7 @@ class NN_agent:
                   ]
         
         self.brain.Input(inputs)
-        self.brain.Activate()
+        self.brain.RecursiveActivation()
         outputs = self.brain.Output()
         
         self.move(outputs[0] * 500)
@@ -137,7 +189,7 @@ def evaluate(genome, space, screen, fast_mode, start_x, start_vx, bot_startx):
 
     # The agents - the brain and the ball
     net = NEAT.NeuralNetwork()
-    genome.BuildPhenotype(net)
+    genome.BuildHyperNEATESPhenotype(net, substrate)
 
     
     agent = NN_agent(space, net, bot_startx)
@@ -185,7 +237,7 @@ def evaluate(genome, space, screen, fast_mode, start_x, start_vx, bot_startx):
             # draw the phenotype
             img = np.zeros((250, 250, 3), dtype=np.uint8)
             img += 10
-#            NEAT.DrawPhenotype(img, (0, 0, 250, 250), net )
+            NEAT.DrawPhenotype(img, (0, 0, 250, 250), net )
             cv2.imshow("current best", img)
             cv2.waitKey(1)
             
@@ -239,37 +291,21 @@ def main():
         s.collision_type = collision_type_wall
     space.add(walls)
     space.add(floor)
-    
-    
-    
-    params = NEAT.Parameters()
-    params.PopulationSize = 1000
-    params.DynamicCompatibility = True
-    params.AllowClones = True
-    params.CompatTreshold = 5.0
-    params.CompatTresholdModifier = 0.3
-    params.YoungAgeTreshold = 15
-    params.SpeciesMaxStagnation = 100
-    params.OldAgeTreshold = 35
-    params.MinSpecies = 5
-    params.MaxSpecies = 250
-    params.RouletteWheelSelection = True
-    params.RecurrentProb = 0.25
-    params.OverallMutationRate = 0.33
-    params.MutateWeightsProb = 0.90
-    params.WeightMutationMaxPower = 1.0
-    params.WeightReplacementMaxPower = 5.0
-    params.MutateWeightsSevereProb = 0.5
-    params.WeightMutationRate = 0.75
-    params.MaxWeight = 20
-    params.MutateAddNeuronProb = 0.01
-    params.MutateAddLinkProb = 0.05
-    params.MutateRemLinkProb = 0.00
+
     
     rng = NEAT.RNG()
     rng.TimeSeed()
     #rng.Seed(0)
-    g = NEAT.Genome(0, 6, 0, 2, False, NEAT.ActivationFunction.TANH, NEAT.ActivationFunction.UNSIGNED_SIGMOID, 0, params)
+    g = NEAT.Genome(5, 
+		substrate.GetMinCPPNInputs(), 
+		0, 
+		substrate.GetMinCPPNOutputs(), 
+		False, 
+		NEAT.ActivationFunction.TANH, 
+		NEAT.ActivationFunction.SIGNED_GAUSS, 
+		0, 
+		params)
+
     pop = NEAT.Population(g, params, True, 1.0)
     
     best_genome_ever = None
@@ -300,10 +336,10 @@ def main():
         # Draw the best genome's phenotype
         net = NEAT.NeuralNetwork()
         best_genome_ever = pop.Species[0].GetLeader()
-        best_genome_ever.BuildPhenotype(net)
+        pop.Species[0].GetLeader().BuildHyperNEATESPhenotype(net, substrate)
         img = np.zeros((250, 250, 3), dtype=np.uint8)
         img += 10
-        NEAT.DrawPhenotype(img, (0, 0, 250, 250), net )
+        NEAT.DrawPhenotype(img, (0, 0, 250, 250), net, substrate=True )
         cv2.imshow("current best", img)
         cv2.waitKey(1)
         

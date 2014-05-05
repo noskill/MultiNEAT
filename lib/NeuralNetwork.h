@@ -87,7 +87,7 @@ public:
         m_activesum(0.0), m_activation(0.0), m_a(0), m_b(0), m_timeconst(0), m_bias(0), m_substrate_coords(0.0, 0.0)
     {
     }
-
+    uint id;
     double m_activesum;  // the synaptic input
     double m_activation; // the synaptic input passed through the activation function
 
@@ -135,19 +135,6 @@ typedef boost::multi_index_container<
   >
 > ConnectionSet;
 
-/*
-class ConnectionSet: public __ConnectionSet{
-    Connection & __getitem__(uint idx) const{
-        return this->get<ConnectionVector>()[idx];
-    }
-
-    uint __len__(){
-        return this->get<ConnectionVector>();
-
-    }
-
-};
-*/
 
 class NeuralNetwork
 {
@@ -171,6 +158,8 @@ public:
     unsigned short m_num_inputs, m_num_outputs;
     ConnectionSet m_connections; // array size - number of connections
     std::vector<Neuron>     m_neurons;
+    std::vector<bool>  _activated;
+    std::vector<bool>  _inActivation;
 
     NeuralNetwork(bool a_Minimal); // if given false, the constructor will create a standard XOR network topology.
     NeuralNetwork();
@@ -202,7 +191,8 @@ public:
     // accessor methods
     void AddNeuron(const Neuron a_n);
     void AddConnection(const Connection a_c) {
-
+        assert(a_c.m_source_neuron_idx < 100);
+        assert(a_c.m_target_neuron_idx < 100);
         m_connections.push_back( a_c );
     }
     Connection GetConnectionByIndex(unsigned int a_idx) const
@@ -219,6 +209,7 @@ public:
         m_num_inputs = a_i;
         m_num_outputs = a_o;
     }
+    void CalculateNeuronActivation(size_t i);
     unsigned short NumInputs() const
     {
         return m_num_inputs;
@@ -248,6 +239,8 @@ public:
     unsigned int CalculateDepth();
     unsigned int NeuronDepth(unsigned int a_NeuronID, unsigned int a_Depth);
     Neuron & GetNeuronByID(uint ID);
+private:
+    void RecursiveActivateNode(int currentNode);
 };
 
 } // namespace NEAT

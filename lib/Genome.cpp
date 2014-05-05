@@ -102,6 +102,25 @@ Genome& Genome::operator =(const Genome& a_G)
     return *this;
 }
 
+// copy constructor
+Genome::Genome(Genome& a_G)
+{
+    // self assignment guard
+    if (this != &a_G)
+    {
+        m_ID          = a_G.m_ID;
+        m_Depth       = a_G.m_Depth;
+        m_NeuronGenes = a_G.m_NeuronGenes;
+        m_LinkGenes   = a_G.m_LinkGenes;
+        m_Fitness     = a_G.m_Fitness;
+        m_AdjustedFitness = a_G.m_AdjustedFitness;
+        m_NumInputs   = a_G.m_NumInputs;
+        m_NumOutputs  = a_G.m_NumOutputs;
+        m_OffspringAmount = a_G.m_OffspringAmount;
+        m_Evaluated = a_G.m_Evaluated;
+        m_PhenotypeBehavior = a_G.m_PhenotypeBehavior;
+    }
+}
 
 // This creates a standart minimal genome - perceptron-like structure
 Genome::Genome(unsigned int a_ID,
@@ -497,7 +516,7 @@ void Genome::BuildHyperNEATPhenotype(NeuralNetwork& net, Substrate& subst)
     // Begin querying the CPPN
     // Create the neural network that will represent the CPPN
     NeuralNetwork t_temp_phenotype = buildTempPhenotype(true);
-    t_temp_phenotype.SetInputOutputDimentions(4, 1);
+    t_temp_phenotype.SetInputOutputDimentions(5, 1);
     // now loop over every potential connection in the substrate and take its weight
     uint dp = CalculateDepth();
 
@@ -642,7 +661,7 @@ void Genome::BuildHyperNEATPhenotype(NeuralNetwork& net, Substrate& subst)
 }
 
 
-void Genome::BuildHyperNEATESPhenotype(NeuralNetwork& net, EvolvableSubstrate& subst){
+void Genome::BuildHyperNEATESPhenotype(NeuralNetwork& net, EvolvableSubstrate &subst){
     // We need a substrate with at least one input and output
     ASSERT(subst.inputCoordinates.size() > 0);
     ASSERT(subst.outputCoordinates.size() > 0);
@@ -658,8 +677,8 @@ void Genome::BuildHyperNEATESPhenotype(NeuralNetwork& net, EvolvableSubstrate& s
     }
 */
     // Now we create the substrate (net)
-    net.SetInputOutputDimentions(static_cast<unsigned short>(subst.inputCoordinates.size()),
-                                 static_cast<unsigned short>(subst.outputCoordinates.size()));
+    net.SetInputOutputDimentions(static_cast<unsigned short>(subst.inputCount),
+                                 static_cast<unsigned short>(subst.outputCount));
 
 
     // Create the neural network that will represent the CPPN
@@ -668,13 +687,14 @@ void Genome::BuildHyperNEATESPhenotype(NeuralNetwork& net, EvolvableSubstrate& s
     subst.generateSubstrate(t_temp_phenotype);
 
     // Inputs
-    for(unsigned int i=0; i<subst.inputCoordinates.size(); i++)
+    for(size_t i=0; i<subst.Coordinates.size(); i++)
     {
         Neuron t_n;
 
         t_n.m_a = 1;
         t_n.m_b = 0;
-        t_n.m_substrate_coords = subst.inputCoordinates[i];
+        t_n.id = i;
+        t_n.m_substrate_coords = subst.Coordinates[i];
 
         t_n.m_activation_function_type = NEAT::LINEAR;
         t_n.m_type = NEAT::INPUT;
@@ -683,13 +703,14 @@ void Genome::BuildHyperNEATESPhenotype(NeuralNetwork& net, EvolvableSubstrate& s
     }
 
     // Output
-    for(unsigned int i=0; i<subst.outputCoordinates.size(); i++)
+    for(size_t i=subst.inputCount; i<subst.outputCount; i++)
     {
         Neuron t_n;
 
         t_n.m_a = 1;
         t_n.m_b = 0;
-        t_n.m_substrate_coords = subst.outputCoordinates[i];
+        t_n.id = i;
+        t_n.m_substrate_coords = subst.Coordinates[i];
 
         t_n.m_activation_function_type = subst.m_output_nodes_activation;
         t_n.m_type = NEAT::OUTPUT;
@@ -698,13 +719,14 @@ void Genome::BuildHyperNEATESPhenotype(NeuralNetwork& net, EvolvableSubstrate& s
     }
 
     // Hidden
-    for(unsigned int i=0; i<subst.hiddenCoordinates.size(); i++)
+    for(size_t i=subst.inputCount + subst.outputCount; i<subst.Coordinates.size(); i++)
     {
         Neuron t_n;
 
         t_n.m_a = 1;
         t_n.m_b = 0;
-        t_n.m_substrate_coords = subst.hiddenCoordinates[i];
+        t_n.id = i;
+        t_n.m_substrate_coords = subst.Coordinates[i];
 
         t_n.m_activation_function_type = subst.m_hidden_nodes_activation;
         t_n.m_type = NEAT::HIDDEN;
@@ -712,14 +734,14 @@ void Genome::BuildHyperNEATESPhenotype(NeuralNetwork& net, EvolvableSubstrate& s
         net.AddNeuron(t_n);
     }
 
-    for (LinkGene linkGene:subst.connections){
+    for (LinkGene linkGene:subst.m_connections){
         Connection conn;
         conn.m_source_neuron_idx = linkGene.FromNeuronID();
         conn.m_target_neuron_idx = linkGene.ToNeuronID();
         conn.m_weight = linkGene.GetWeight();
         net.AddConnection(std::move(conn));
     }
-
+    //RemoveDeadEnd(net);
 }
 
 
@@ -1890,8 +1912,6 @@ void Genome::Randomize_LinkWeights(double a_Range, RNG& a_RNG)
 }
 
 
-
-
 // Perturbs the A parameters of the neuron activation functions
 void Genome::Mutate_NeuronActivations_A(Parameters& a_Parameters, RNG& a_RNG)
 {
@@ -2331,10 +2351,6 @@ Genome Genome::Mate(Genome& a_Dad, bool a_MateAverage, bool a_InterSpecies, RNG&
     return t_baby;
 }
 
-
-
-
-
 // Sorts the genes of the genome
 // The neurons by IDs and the links by innovation numbers.
 bool neuron_compare(NeuronGene a_ls, NeuronGene a_rs)
@@ -2350,9 +2366,6 @@ void Genome::SortGenes()
     std::sort(m_NeuronGenes.begin(), m_NeuronGenes.end(), neuron_compare);
     std::sort(m_LinkGenes.begin(), m_LinkGenes.end(), link_compare);
 }
-
-
-
 
 
 unsigned int Genome::NeuronDepth(unsigned int a_NeuronID, unsigned int a_Depth)
@@ -2388,6 +2401,8 @@ unsigned int Genome::NeuronDepth(unsigned int a_NeuronID, unsigned int a_Depth)
 
         // RECURSION
         t_current_depth = NeuronDepth( t_link.FromNeuronID(), a_Depth + 1);
+        if (t_current_depth >= 16)
+            return 16;
         if (t_current_depth > t_max_depth)
             t_max_depth = t_current_depth;
     }
@@ -2477,7 +2492,7 @@ Genome::Genome(std::ifstream& a_DataFile)
 
         if (t_Str == "Neuron")
         {
-            int t_id, t_type, t_activationfunc;
+            int t_type, t_activationfunc;
             double t_splity, t_a, t_b, t_timeconst, t_bias;
 
             a_DataFile >> t_id;
@@ -2570,7 +2585,50 @@ void Genome::Save(FILE* a_file)
     fprintf(a_file, "GenomeEnd\n\n");
 }
 
+/*
+void Genome::CheckNetwork(NeuralNetwork & net){
+    for(uint i=0; i<net.NumNeurons(); i++){
+        for(uint j=0; j<net.NumNeurons(); j++){
+            auto c_inp = net.m_connections.get<ConnectionSourceMap>().equal_range(i);
+            uint std::distance(c_inp.first, c_inp.second);
+            auto c_outp = net.m_connections.get<ConnectionTargetMap>().equal_range(i);
+        }
+    }
+}*/
 
+void Genome::RemoveDeadEnd(NeuralNetwork & net){
+    std::vector<uint> dunglingNeurons;
+    std::vector<Connection const*> dunglingConnections;
+
+    for(uint i=0; i < net.NumNeurons();i++){
+        if (net.m_neurons[i].Type() == HIDDEN){
+            auto c_inp = net.m_connections.get<ConnectionSourceMap>().equal_range(i);
+            auto c_outp = net.m_connections.get<ConnectionTargetMap>().equal_range(i);
+            if ((c_inp.first == c_inp.second) || (c_outp.first == c_outp.second)){
+               for(auto it=c_inp.first; it != c_inp.second; it++){
+                    dunglingConnections.push_back(&(*it));
+               }
+               for(auto it=c_outp.first;it != c_outp.second;it++){
+                    dunglingConnections.push_back(&(*it));
+               }
+               dunglingNeurons.push_back(i);
+            }
+        }
+    }
+
+    bool isDungling = (dunglingNeurons.size() > 0) || (dunglingConnections.size() > 0);
+
+    for(uint i=0; i<dunglingNeurons.size(); i++){
+        net.m_neurons.erase(net.m_neurons.begin() + (dunglingNeurons[i] - i));
+    }
+
+    for(uint i=0; i<dunglingConnections.size(); i++){
+        net.m_connections.remove(*dunglingConnections[i]);
+    }
+
+    if (isDungling)
+        RemoveDeadEnd(net);
+}
 
 
 

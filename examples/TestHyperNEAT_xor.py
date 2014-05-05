@@ -127,7 +127,7 @@ params.ActivationFunction_SignedSine_Prob = 1.0;
 params.ActivationFunction_UnsignedSine_Prob = 0.0;
 params.ActivationFunction_Linear_Prob = 1.0;
 
-
+params = NEAT.loadParameters('params.txt')
 rng = NEAT.RNG()
 rng.TimeSeed()
 
@@ -173,9 +173,10 @@ def getbest():
         pop.Epoch()
 #        print "Generation:", generation
         generations = generation
+
         if best > 15.5:
             break
-        
+    print "depth: ", net.CalculateDepth()   
     return generations
 
 gens = []

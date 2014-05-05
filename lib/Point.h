@@ -19,6 +19,7 @@ struct Point2D
     T Y;
 
     static const unsigned short SIZE = 2;
+    constexpr static const float THRESHOLD = 0.000001;
 
     Point2D(T x, T y):
         X(x), Y(y){}
@@ -41,7 +42,10 @@ struct Point2D
     }
 
     bool operator==(const Point2D & other)const{
-        return distance() == other.distance();
+
+        T x_d = std::abs(this->X - other.X);
+        T y_d = std::abs(this->Y - other.Y);
+        return (x_d < THRESHOLD) && (y_d < THRESHOLD);
     }
 
     bool operator <(const Point2D & other)const{
