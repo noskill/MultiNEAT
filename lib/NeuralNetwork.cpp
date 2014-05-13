@@ -36,7 +36,7 @@
 #include <string>
 #include <iostream>
 #include "NeuralNetwork.h"
-#include "assert.h"
+#include "Assert.h"
 #include "Utils.h"
 #include <boost/format.hpp>
 
@@ -174,11 +174,11 @@ NeuralNetwork::NeuralNetwork(bool a_Minimal):
         // The hidden neuron       // index 4
         Neuron t_h1;
 
-        m_neurons.push_back(t_i1);
-        m_neurons.push_back(t_i2);
-        m_neurons.push_back(t_i3);
-        m_neurons.push_back(t_o1);
-        m_neurons.push_back(t_h1);
+        m_neurons[0] = t_i1;
+        m_neurons[1] = (t_i2);
+        m_neurons[2] = (t_i3);
+        m_neurons[3] = (t_o1);
+        m_neurons[4] = (t_h1);
 
         // The connections
         Connection t_c;
@@ -659,9 +659,9 @@ void NeuralNetwork::Adapt(Parameters& a_Parameters)
     double t_max_weight = -999999999;
     for (unsigned int i = 0; i < m_connections.size(); i++)
     {
-        if (abs(m_connections[i].m_weight) > t_max_weight)
+        if (std::fabs(m_connections[i].m_weight) > t_max_weight)
         {
-            t_max_weight = abs(m_connections[i].m_weight);
+            t_max_weight = std::fabs(m_connections[i].m_weight);
         }
     }
 
@@ -895,11 +895,12 @@ bool NeuralNetwork::Load(std::ifstream& a_DataFile)
             a_DataFile >> t_n.m_bias;
             a_DataFile >> t_aftype;
             a_DataFile >> t_n.m_split_y;
+            a_DataFile >> t_n.id;
 
             t_n.m_type = static_cast<NEAT::NeuronType>(t_type);
             t_n.m_activation_function_type = static_cast<NEAT::ActivationFunction>(t_aftype);
 
-            m_neurons.push_back(t_n);
+            m_neurons[t_n.id] = t_n;
         }
 
         // a connection?
@@ -1022,7 +1023,7 @@ unsigned int NeuralNetwork::NeuronDepth(unsigned int a_NeuronID, unsigned int a_
 }
 
 void NeuralNetwork::AddNeuron(const Neuron a_n) {
-    m_neurons.push_back( a_n );
+    m_neurons.push_back(a_n) ;
     this->_activated.push_back(false);
     this->_inActivation.push_back(false);
 }

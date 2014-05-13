@@ -199,8 +199,9 @@ public:
     {
         return m_connections[a_idx];
     }
-    Neuron GetNeuronByIndex(unsigned int a_idx) const
+    Neuron GetNeuronByIndex(unsigned int a_idx)
     {
+        assert(a_idx < m_neurons.size());
         return m_neurons[a_idx];
     }
     void throwWrongSize(size_t actual, size_t expected);

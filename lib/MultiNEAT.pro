@@ -2,7 +2,9 @@ SOURCES += *.cpp \
     Point.cpp
 
 HEADERS += *.h \
-    SubstrateBase.h
+    SubstrateBase.h \
+    Const.h \
+    QuadTree.h
 TEMPLATE = lib
 CONFIG += c++11
 CONFIG -= qt

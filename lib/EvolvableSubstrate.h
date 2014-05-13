@@ -20,13 +20,14 @@ class NeuralNetwork;
 class EvolvableSubstrate: public SubstrateBase
 {
 private:
-
-    std::map<PointD, uint> __InsertIndex;
+    EvolvableSubstrate()=delete;
 
 public:
+    std::map<PointD, uint> hiddenInsertIndex;
+    std::map<PointD, uint> outputInsertIndex;
+    std::map<PointD, uint> inputInsertIndex;
     NEAT::ActivationFunction m_hidden_nodes_activation = NEAT::UNSIGNED_SIGMOID;
     NEAT::ActivationFunction m_output_nodes_activation = NEAT::UNSIGNED_SIGMOID;
-    std::vector<PointD> Coordinates;
     std::vector<LinkGene> m_connections;
     uint inputCount;
     uint outputCount;
@@ -50,6 +51,7 @@ public:
             width = _w;
             childs = std::vector<QuadPoint>();
         }
+        
     };
 
     struct TempConnection
@@ -90,6 +92,7 @@ private:
     void getCPPNValues(std::vector<float> & l, const QuadPoint &p);
 
     void clearHidden();
+    bool existNonHidden(PointD & p);
 
 public:
 
@@ -135,8 +138,14 @@ public:
     //dementionality of substrate
     uint GetMaxDims(){
         uint result = 0;
-        if (this->Coordinates.size()){
-            result = std::max((uint)Coordinates[0].size(), result);
+        for(auto it=inputInsertIndex.begin(); it!=inputInsertIndex.end(); it++){
+            result = std::max((uint)(it->first.size()), result);
+        }
+        for(auto it=outputInsertIndex.begin(); it!=outputInsertIndex.end(); it++){
+            result = std::max((uint)(it->first.size()), result);
+        }
+        for(auto it=hiddenInsertIndex.begin(); it!=hiddenInsertIndex.end(); it++){
+            result = std::max((uint)(it->first.size()), result);
         }
         return result;
     }
@@ -145,9 +154,15 @@ public:
 
     //debug and test functions
 
-    void checkConnections();
+    bool checkConnections();
+
+    bool existInput(PointD & p);
+
+    uint connectionCount(uint source, uint target);
 
     bool pointExists(size_t neuronId);
+
+    size_t CoordinatesSize();
 };
 
 }

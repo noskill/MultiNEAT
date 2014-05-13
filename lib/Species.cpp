@@ -37,7 +37,6 @@
 #include "Population.h"
 #include "Utils.h"
 #include "Parameters.h"
-#include "assert.h"
 
 
 namespace NEAT

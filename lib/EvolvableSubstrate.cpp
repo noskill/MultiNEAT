@@ -18,19 +18,16 @@ EvolvableSubstrate::EvolvableSubstrate(Parameters const & p, boost::python::list
     this->inputCount = inp;
     this->outputCount = out;
 
-    Coordinates.reserve( out + inp );
-
     for(uint i=0; i<inp; i++)
     {
         std::vector<double> i_input;
         for(uint j=0; j<py::len(a_inputs[i]); j++){
             i_input.push_back(py::extract<double>(a_inputs[i][j]));
         }
-        Coordinates.emplace_back(i_input);
-        __InsertIndex[Coordinates.back()] = i;
+        inputInsertIndex[PointD(i_input)] = i;
     }
 
-    assert((Coordinates.size() == inp) && (__InsertIndex.size() == inp));
+    assert(inputInsertIndex.size() == inp);
 
     for(uint i=0; i<out; i++)
     {
@@ -38,11 +35,10 @@ EvolvableSubstrate::EvolvableSubstrate(Parameters const & p, boost::python::list
         for(uint j=0; j<py::len(a_outputs[i]); j++){
             i_out.push_back(py::extract<double>(a_outputs[i][j]));
         }
-        Coordinates.emplace_back(i_out);
-        __InsertIndex[Coordinates.back()] = i + inp;
+        outputInsertIndex[PointD(i_out)] = i + inp;
     }
 
-    assert((Coordinates.size() == inp + out) && (__InsertIndex.size() == inp + out));
+    assert(outputInsertIndex.size() == out);
 }
 
 EvolvableSubstrate::QuadPoint EvolvableSubstrate::QuadTreeInitialisation(float a, float b, bool outgoing){
@@ -113,17 +109,17 @@ std::vector<EvolvableSubstrate::TempConnection> EvolvableSubstrate::PruneAndExpr
             // Determine if point is in a band by checking neighbor CPPN values
             if (outgoing)
             {
-                left = std::abs(c.w - queryCPPN(a, b, c.x - node.width, c.y));
-                right = std::abs(c.w - queryCPPN(a, b, c.x + node.width, c.y));
-                top = std::abs(c.w - queryCPPN(a, b, c.x, c.y - node.width));
-                bottom = std::abs(c.w - queryCPPN(a, b, c.x, c.y + node.width));
+                left = std::fabs(c.w - queryCPPN(a, b, c.x - node.width, c.y));
+                right = std::fabs(c.w - queryCPPN(a, b, c.x + node.width, c.y));
+                top = std::fabs(c.w - queryCPPN(a, b, c.x, c.y - node.width));
+                bottom = std::fabs(c.w - queryCPPN(a, b, c.x, c.y + node.width));
             }
             else
             {
-                left = std::abs(c.w - queryCPPN(c.x - node.width, c.y, a, b));
-                right = std::abs(c.w - queryCPPN(c.x + node.width, c.y, a, b));
-                top = std::abs(c.w - queryCPPN(c.x, c.y - node.width, a, b));
-                bottom = std::abs(c.w - queryCPPN(c.x, c.y + node.width, a, b));
+                left = std::fabs(c.w - queryCPPN(c.x - node.width, c.y, a, b));
+                right = std::fabs(c.w - queryCPPN(c.x + node.width, c.y, a, b));
+                top = std::fabs(c.w - queryCPPN(c.x, c.y - node.width, a, b));
+                bottom = std::fabs(c.w - queryCPPN(c.x, c.y + node.width, a, b));
             }
 
             if (std::max(std::min(top, bottom), std::min(left, right)) > parameters.BandingThreshold)
@@ -145,9 +141,8 @@ std::vector<EvolvableSubstrate::TempConnection> EvolvableSubstrate::PruneAndExpr
 }
 
 void EvolvableSubstrate::clearHidden(){
+    hiddenInsertIndex.clear();
     this->m_connections.clear();
-    this->Coordinates.clear();
-    this->__InsertIndex.clear();
 }
 
 void EvolvableSubstrate::generateSubstrate(NeuralNetwork _cppn)
@@ -159,10 +154,10 @@ void EvolvableSubstrate::generateSubstrate(NeuralNetwork _cppn)
     uint innovationCounter = 0;
 
     //CONNECTIONS DIRECTLY FROM INPUT NODES
-    for (uint sourceIndex=0; sourceIndex < inputCount; sourceIndex++)
+    for(auto it=inputInsertIndex.begin(); it!=inputInsertIndex.end();it++)
     {
-        PointD & input = Coordinates[sourceIndex];
-
+        const PointD & input = it->first;
+        const uint sourceIndex = it->second;
         // Analyze outgoing connectivity pattern from this input
         QuadPoint root = QuadTreeInitialisation(input.X, input.Y, true);
 
@@ -173,18 +168,22 @@ void EvolvableSubstrate::generateSubstrate(NeuralNetwork _cppn)
         {
             PointD newp = PointD(p.x2, p.y2);
             uint targetIndex;
-            auto it = __InsertIndex.find(newp);
-            if (it == __InsertIndex.end())
+            //new point is not an input point
+            if(!existInput(newp))
             {
-
-                targetIndex = Coordinates.size();
-                Coordinates.push_back(newp);
-                __InsertIndex[newp] = targetIndex;
+                auto it = hiddenInsertIndex.find(newp);
+                if (it == hiddenInsertIndex.end())
+                {
+                    targetIndex = hiddenInsertIndex.size() + inputCount + outputCount;
+                    hiddenInsertIndex[newp] = targetIndex;
+                }
+                else{
+                    targetIndex = it->second;
+                }
+                if(targetIndex!=sourceIndex)
+                m_connections.push_back(LinkGene(sourceIndex, targetIndex, innovationCounter++, p.weight));
+                assert(checkConnections());
             }
-            else{
-                targetIndex = it->second;
-            }
-            m_connections.push_back(LinkGene(sourceIndex, targetIndex, innovationCounter++, p.weight));
         }
     }
 
@@ -200,25 +199,26 @@ void EvolvableSubstrate::generateSubstrate(NeuralNetwork _cppn)
             QuadPoint root = QuadTreeInitialisation(hiddenP.first.X, hiddenP.first.Y, true);
             tempConnections = PruneAndExpress(hiddenP.first.X, hiddenP.first.Y, root, true);
 
-            uint sourceIndex = hiddenP.second;
+            const uint sourceIndex = hiddenP.second;
 
             for (TempConnection const & p: tempConnections)
             {
-
                 PointD newp = PointD(p.x2, p.y2);
 
-                auto it = __InsertIndex.find(newp);
-                size_t targetIndex;
-                if (it == __InsertIndex.end())
-                {
-                    targetIndex = Coordinates.size();
-                    Coordinates.push_back(newp);
-                    __InsertIndex[newp] = targetIndex;
+                if(!existNonHidden(newp)){
+                    auto it = hiddenInsertIndex.find(newp);
+                    size_t targetIndex;
+                    if (it == hiddenInsertIndex.end())
+                    {
+                        targetIndex = hiddenInsertIndex.size()  + inputCount + outputCount;;
+                        hiddenInsertIndex[newp] = targetIndex;
+                    }
+                    else{
+                        targetIndex = it->second;
+                    }
+                    if(targetIndex!=sourceIndex)
+                        m_connections.emplace_back(sourceIndex, targetIndex, innovationCounter++, p.weight);
                 }
-                else{
-                    targetIndex = it->second;
-                }
-                m_connections.emplace_back(sourceIndex, targetIndex, innovationCounter++, p.weight);
             }
         }
 
@@ -234,11 +234,12 @@ void EvolvableSubstrate::generateSubstrate(NeuralNetwork _cppn)
     }
 
     tempConnections.clear();
-
     // CONNECT HIDDEN TO OUTPUT
-    for (uint targetIndex = inputCount; targetIndex < inputCount + outputCount; targetIndex++)
+    for(auto it=outputInsertIndex.begin(); it!=outputInsertIndex.end();it++)
     {
-        const PointD & outputPos = Coordinates[targetIndex];
+
+        const PointD & outputPos = it->first;
+        const uint targetIndex = it->second;
 
         // Analyze incoming connectivity pattern to this output
         QuadPoint root = QuadTreeInitialisation(outputPos.X, outputPos.Y, false);
@@ -248,27 +249,43 @@ void EvolvableSubstrate::generateSubstrate(NeuralNetwork _cppn)
         for (const TempConnection &  t: tempConnections)
         {
             PointD source(t.x1, t.y1);
-            auto it = __InsertIndex.find(source);
+
+            auto it = hiddenInsertIndex.find(source);
 
             /*
             New nodes not created here because all the hidden nodes that are
                 connected to an input/hidden node are already expressed.
             */
-            if (it != __InsertIndex.end()){  //only connect if hidden neuron already exists
+            if (it != outputInsertIndex.end()){  //only connect if hidden neuron already exists
                 uint sourceIndex = it->second;
+                if(targetIndex!=sourceIndex)
                 m_connections.push_back(LinkGene(sourceIndex, targetIndex, innovationCounter++, t.weight));
             }
         }
 
     }
-    assert([this]() {
-       for(LinkGene & l: this->m_connections){
-           assert(l.FromNeuronID() < 100);
-           assert(l.ToNeuronID() < 100);
-       }
-       return true;
-    }());
+
     tempConnections.clear();
+    assert(checkConnections());
+}
+
+bool EvolvableSubstrate::existNonHidden(PointD & p){
+    auto out = outputInsertIndex.find(p);
+    auto inp = inputInsertIndex.find(p);
+    bool result = true;
+    if(inp == inputInsertIndex.end() && out == outputInsertIndex.end()){
+        result = false;
+    }
+    return result;
+}
+
+bool EvolvableSubstrate::existInput(PointD & p){
+    auto inp = inputInsertIndex.find(p);
+    bool result = true;
+    if(inp == inputInsertIndex.end()){
+        result = false;
+    }
+    return result;
 }
 
 double EvolvableSubstrate::queryCPPN(float x1, float y1, float x2, float y2)
@@ -304,27 +321,48 @@ void EvolvableSubstrate::getCPPNValues(std::vector<float> & l, const QuadPoint &
 }
 
 std::map<PointD, uint> EvolvableSubstrate::getHiddenPoints(){
-    std::map<PointD, uint> result;
-    for(size_t i=inputCount + outputCount; i < Coordinates.size(); i++){
-        result[Coordinates[i]] = i + inputCount + outputCount;
-    }
+    std::map<PointD, uint> result(this->hiddenInsertIndex);
     return result;
 }
 
 //debug and test functions
 
-void EvolvableSubstrate::checkConnections(){
+bool EvolvableSubstrate::checkConnections(){
     for(size_t i=0; i<this->m_connections.size(); i++){
         assert(pointExists(m_connections[i].FromNeuronID()));
         assert(pointExists(m_connections[i].ToNeuronID()));
+        assert(connectionCount(m_connections[i].FromNeuronID(), m_connections[i].ToNeuronID()) == 1);
     }
+    return true;
 }
 
 
+uint EvolvableSubstrate::connectionCount(uint source, uint target){
+    std::vector<uint> result;
+    for(size_t i=0; i<this->m_connections.size(); i++){
+        if(m_connections[i].FromNeuronID() == source && m_connections[i].ToNeuronID() == target){
+            result.push_back(i);
+        }
+        if(result.size()>1)
+            assert(false);
+    }
+    return result.size();
+}
+
 bool EvolvableSubstrate::pointExists(size_t neuronId){
     bool result = false;
-    if (__InsertIndex.find(Coordinates[neuronId]) != __InsertIndex.end()){
-        result = true;
+    std::vector<const std::map<PointD, uint> * > vec = {&inputInsertIndex, &outputInsertIndex, &hiddenInsertIndex};
+    for(auto & InsertIndex: vec){
+        for(auto it=InsertIndex->begin(); it!=InsertIndex->end() && !result;it++){
+            if(it->second == neuronId){
+                result = true;
+            }
+        }
     }
+
     return result;
+}
+
+size_t EvolvableSubstrate::CoordinatesSize(){
+    return this->inputInsertIndex.size() + this->outputInsertIndex.size() + this->hiddenInsertIndex.size();
 }

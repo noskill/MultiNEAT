@@ -39,6 +39,7 @@
 #include "Assert.h"
 #include "EvolvableSubstrate.h"
 #include "Random.h"
+#include "Const.h"
 
 namespace NEAT
 {
@@ -264,7 +265,7 @@ Genome::Genome(unsigned int a_ID,
 
 // A little helper function to find the index of a neuron, given its ID
 // returns -1 if not found
-unsigned int Genome::GetNeuronIndex(unsigned int a_ID) const
+int Genome::GetNeuronIndex(unsigned int a_ID) const
 {
     ASSERT(a_ID > 0);
 
@@ -411,7 +412,7 @@ void Genome::BuildPhenotype(NeuralNetwork& a_Net) const
         t_n.m_activation_function_type = m_NeuronGenes[i].m_ActFunction;
         t_n.m_split_y                  = m_NeuronGenes[i].SplitY();
         t_n.m_type                     = m_NeuronGenes[i].Type();
-
+        t_n.id = m_ID;
         a_Net.AddNeuron( t_n );
     }
 
@@ -683,65 +684,88 @@ void Genome::BuildHyperNEATESPhenotype(NeuralNetwork& net, EvolvableSubstrate &s
 
     // Create the neural network that will represent the CPPN
     NeuralNetwork t_temp_phenotype = buildTempPhenotype();
+    assert(subst.GetMinCPPNInputs() == SUBSTRATE_MINCPPN_IN);
+    assert(subst.GetMinCPPNOutputs() == SUBSTRATE_MINCPPN_OUT);
     t_temp_phenotype.SetInputOutputDimentions(subst.GetMinCPPNInputs(), subst.GetMinCPPNOutputs());
     subst.generateSubstrate(t_temp_phenotype);
-
+    std::map<uint, Neuron> neurons;
     // Inputs
-    for(size_t i=0; i<subst.Coordinates.size(); i++)
+    for(auto it=subst.inputInsertIndex.begin(); it!=subst.inputInsertIndex.end();it++)
     {
         Neuron t_n;
 
         t_n.m_a = 1;
         t_n.m_b = 0;
-        t_n.id = i;
-        t_n.m_substrate_coords = subst.Coordinates[i];
+        t_n.id = it->second;
+        t_n.m_substrate_coords = it->first;
 
         t_n.m_activation_function_type = NEAT::LINEAR;
         t_n.m_type = NEAT::INPUT;
 
-        net.AddNeuron(t_n);
+        neurons[t_n.id] = t_n;
     }
 
     // Output
-    for(size_t i=subst.inputCount; i<subst.outputCount; i++)
+    for(auto it=subst.outputInsertIndex.begin(); it!=subst.outputInsertIndex.end();it++)
     {
         Neuron t_n;
 
         t_n.m_a = 1;
         t_n.m_b = 0;
-        t_n.id = i;
-        t_n.m_substrate_coords = subst.Coordinates[i];
+        t_n.id = it->second;
+        t_n.m_substrate_coords = it->first;
+
 
         t_n.m_activation_function_type = subst.m_output_nodes_activation;
         t_n.m_type = NEAT::OUTPUT;
 
-        net.AddNeuron(t_n);
+        neurons[t_n.id] = t_n;
     }
 
     // Hidden
-    for(size_t i=subst.inputCount + subst.outputCount; i<subst.Coordinates.size(); i++)
+    for(auto it=subst.hiddenInsertIndex.begin(); it!=subst.hiddenInsertIndex.end();it++)
     {
         Neuron t_n;
 
         t_n.m_a = 1;
         t_n.m_b = 0;
-        t_n.id = i;
-        t_n.m_substrate_coords = subst.Coordinates[i];
+        t_n.id = it->second;
+        t_n.m_substrate_coords = it->first;
+
 
         t_n.m_activation_function_type = subst.m_hidden_nodes_activation;
         t_n.m_type = NEAT::HIDDEN;
 
-        net.AddNeuron(t_n);
+        neurons[t_n.id] = t_n;
     }
+
+    assert(neurons.size() == subst.CoordinatesSize());
+
+    ConnectionSet t_connections;
 
     for (LinkGene linkGene:subst.m_connections){
         Connection conn;
         conn.m_source_neuron_idx = linkGene.FromNeuronID();
         conn.m_target_neuron_idx = linkGene.ToNeuronID();
         conn.m_weight = linkGene.GetWeight();
-        net.AddConnection(std::move(conn));
+        t_connections.push_back(conn);
     }
-    //RemoveDeadEnd(net);
+
+    //RemoveDeadEnd(t_connections, neurons);
+
+    for(auto it=neurons.begin(); it!=neurons.end(); it++){
+        net.AddNeuron(it->second);
+    }
+
+    for(size_t i=0; i<t_connections.size(); i++){
+        Connection conn(t_connections[i]);
+        conn.m_source_neuron_idx = GetNeuronIndex(t_connections[i].m_source_neuron_idx, net.m_neurons);
+        conn.m_target_neuron_idx = GetNeuronIndex(t_connections[i].m_target_neuron_idx, net.m_neurons);
+        net.GetNeuronByIndex(conn.m_source_neuron_idx);
+        net.GetNeuronByIndex(conn.m_target_neuron_idx);
+        net.AddConnection(conn);
+    }
+    assert(t_connections.size() == net.m_connections.size());
 }
 
 
@@ -999,7 +1023,7 @@ bool Genome::Mutate_AddNeuron(InnovationDatabase &a_Innovs, Parameters& a_Parame
             /*else
             {
                 // this selects older links for splitting
-                double t_r = abs(RandGaussClamped()/3.0);
+                double t_r = fabs(RandGaussClamped()/3.0);
                 Clamp(t_r, 0, 1);
                 t_link_num =  static_cast<int>(t_r * (NumLinks()-1));
             }*/
@@ -2596,14 +2620,14 @@ void Genome::CheckNetwork(NeuralNetwork & net){
     }
 }*/
 
-void Genome::RemoveDeadEnd(NeuralNetwork & net){
+void Genome::RemoveDeadEnd(ConnectionSet & a_connections, std::map<uint, Neuron> & a_neurons){
     std::vector<uint> dunglingNeurons;
     std::vector<Connection const*> dunglingConnections;
 
-    for(uint i=0; i < net.NumNeurons();i++){
-        if (net.m_neurons[i].Type() == HIDDEN){
-            auto c_inp = net.m_connections.get<ConnectionSourceMap>().equal_range(i);
-            auto c_outp = net.m_connections.get<ConnectionTargetMap>().equal_range(i);
+    for(uint i=0; i < a_neurons.size();i++){
+        if (a_neurons[i].Type() == HIDDEN){
+            auto c_inp = a_connections.get<ConnectionSourceMap>().equal_range(i);
+            auto c_outp = a_connections.get<ConnectionTargetMap>().equal_range(i);
             if ((c_inp.first == c_inp.second) || (c_outp.first == c_outp.second)){
                for(auto it=c_inp.first; it != c_inp.second; it++){
                     dunglingConnections.push_back(&(*it));
@@ -2619,15 +2643,33 @@ void Genome::RemoveDeadEnd(NeuralNetwork & net){
     bool isDungling = (dunglingNeurons.size() > 0) || (dunglingConnections.size() > 0);
 
     for(uint i=0; i<dunglingNeurons.size(); i++){
-        net.m_neurons.erase(net.m_neurons.begin() + (dunglingNeurons[i] - i));
+        a_neurons.erase(dunglingNeurons[i]);
     }
 
     for(uint i=0; i<dunglingConnections.size(); i++){
-        net.m_connections.remove(*dunglingConnections[i]);
+        a_connections.remove(*dunglingConnections[i]);
     }
 
     if (isDungling)
-        RemoveDeadEnd(net);
+        RemoveDeadEnd(a_connections, a_neurons);
+}
+
+
+// A little helper function to find the index of a neuron, given its ID
+// returns -1 if not found
+int Genome::GetNeuronIndex(unsigned int a_ID, std::vector<Neuron> & a_neurons) const
+{
+    ASSERT(a_ID > 0);
+
+    for(size_t i=0; i < a_neurons.size(); i++)
+    {
+        if (a_neurons[i].id == a_ID)
+        {
+            return i;
+        }
+    }
+
+    return -1;
 }
 
 

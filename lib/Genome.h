@@ -218,7 +218,8 @@ public:
     }
 
     // A little helper function to find the index of a neuron, given its ID
-    unsigned int GetNeuronIndex(unsigned int a_id) const;
+    int GetNeuronIndex(unsigned int a_id) const;
+    int GetNeuronIndex(unsigned int a_ID, std::vector<Neuron> & a_neurons) const;
 
     // A little helper function to find the index of a link, given its innovation ID
     unsigned int GetLinkIndex(unsigned int a_innovid) const;
@@ -409,7 +410,7 @@ public:
         //ar & m_PhenotypeBehavior; // todo: think about how we will handle the behaviors with pickle
     }
 
-    void RemoveDeadEnd(NeuralNetwork & net);
+    void RemoveDeadEnd(ConnectionSet & a_connections, std::map<uint, Neuron> & a_neurons);
 };
 
 

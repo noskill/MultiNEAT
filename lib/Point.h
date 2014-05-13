@@ -3,7 +3,7 @@
 
 #include "vector"
 #include "Assert.h"
-#include "math.h"
+#include <cmath>
 #include <stdexcept>
 
 #define point_to_vec(vec, point) \
@@ -12,14 +12,16 @@
 
 namespace NEAT{
 
-template<typename T>
+template<typename T, typename D>
 struct Point2D
 {
     T X;
     T Y;
+    D data;
 
     static const unsigned short SIZE = 2;
     constexpr static const float THRESHOLD = 0.000001;
+    typedef T value_type;
 
     Point2D(T x, T y):
         X(x), Y(y){}
@@ -37,24 +39,6 @@ struct Point2D
         return result;
     }
 
-    T distance() const {
-        return X + Y;
-    }
-
-    bool operator==(const Point2D & other)const{
-
-        T x_d = std::abs(this->X - other.X);
-        T y_d = std::abs(this->Y - other.Y);
-        return (x_d < THRESHOLD) && (y_d < THRESHOLD);
-    }
-
-    bool operator <(const Point2D & other)const{
-        return distance() < other.distance();
-    }
-
-    bool operator >(const Point2D & other)const{
-        return distance() > other.distance();
-    }
 
     T operator[](uint index){
         switch(index){
@@ -67,16 +51,22 @@ struct Point2D
         }
     }
 
-    unsigned short size(){
+    bool operator==(const Point2D & rhs){
+        return (rhs.X == this->X) && (rhs.Y == this->Y);
+    }
+
+    bool operator!=(const Point2D & rhs){
+        return !(this->operator ==(rhs));
+    }
+
+    unsigned short size() const {
         return SIZE;
     }
 
 };
 
-typedef Point2D<float> PointF;
-typedef Point2D<double> PointD;
-
-
+typedef Point2D<float, unsigned int> PointF;
+typedef Point2D<double, unsigned int> PointD;
 
 }
 
