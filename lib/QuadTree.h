@@ -16,19 +16,27 @@ struct SQuadPoint
       std::stack<SQuadPoint*> stack;
 
     public:
-      QuadIterator(SQuadPoint * x=nullptr) :current(x) {
-         stack.push(current);
+      QuadIterator(SQuadPoint * x=nullptr) :current(x){
+         if (current != nullptr){
+            stack.push(current);
+         }
          if(current != nullptr && !(current->isLeaf())){
              (*this)++;
          }
       }
-      QuadIterator(const SQuadPoint * mit) : current(mit->current), stack(mit->stack){}
+      QuadIterator(const SQuadPoint * mit) :
+          current(mit->current), stack(mit->stack)
+      {}
       bool operator==(const QuadIterator& rhs) {return current == rhs.current;}
       bool operator!=(const QuadIterator& rhs) {return current != rhs.current;}
       T & operator*() {return  current->points[0];}
       void operator++(int){
+
+
           SQuadPoint * before = current;
-          while (!stack.empty() && (current->isLeaf() ? (current == before): !(current->isLeaf()))) {
+          // if current == before and current is leaf search for new leaf
+
+          while (!stack.empty() && ((current == before) || !current->isLeaf())) {
              current = stack.top();
              stack.pop();
 
@@ -42,12 +50,22 @@ struct SQuadPoint
                  if (current->childs[i] != nullptr)
                    stack.push(current->childs[i].get());
              }
-        }
-          if(stack.empty()){
-              current = nullptr;
-          }
-      }
 
+          }
+
+          if(stack.empty() && current == before){
+              current = nullptr;
+              return;
+
+        }
+
+      }
+      void operator++(){
+          (*this)++;
+      }
+      T * operator->(){
+          return &(current->points[0]);
+      }
     };
 
     enum position { TOPLEFT, BOTTOMLEFT, BOTTOMRIGHT, TOPRIGHT};
@@ -55,11 +73,11 @@ struct SQuadPoint
     float width; //width of this quadtree square
     std::vector<std::shared_ptr<SQuadPoint>> childs;
     uint level; //the level in the quadtree
-    SQuadPoint * parent;
     std::vector<T> points;
+    size_t _size;
 
-    SQuadPoint(float _x, float _y, float _w, int _level, SQuadPoint * _parent=nullptr):
-        parent(_parent)
+    SQuadPoint(float _x, float _y, float _w, int _level):
+        _size(0)
     {
         level = _level;
         points.reserve(1);
@@ -68,6 +86,26 @@ struct SQuadPoint
         width = _w;
         childs.resize(4, nullptr);
     }
+
+    SQuadPoint (const SQuadPoint & rhs):
+    x(rhs.x),
+    y(rhs.y),
+    width(rhs.width),
+    level(rhs.level),
+    points(rhs.points),
+    _size(rhs._size)
+    {
+        points.reserve(1);
+        childs.resize(4, nullptr);
+        for(size_t i=0; i<childs.size(); i++){
+            if(rhs.childs[i] != nullptr){
+                childs[i] = std::make_shared<SQuadPoint<T>>(*(rhs.childs[i]));
+                assert(childs[i] != nullptr);
+            }
+        }
+    }
+
+//    SQuadPoint operator=(const SQuadPoint && rhs)=delete;
 
     bool hasData(){
         return points.size() > 0;
@@ -81,7 +119,7 @@ struct SQuadPoint
                 break;
             }
         }
-        return result && (level != 0);
+        return result;
     }
 
     position getPosIndex(typename T::value_type _x, typename T::value_type _y){
@@ -115,16 +153,16 @@ struct SQuadPoint
         switch(pos){
         case TOPLEFT:
             // Divide into sub-regions and assign children to parent
-            childs[pos] = std::unique_ptr<SQuadPoint>(new SQuadPoint(x - width / 2, y + width / 2, width / 2, level + 1, this));
+            childs[pos] = std::unique_ptr<SQuadPoint>(new SQuadPoint(x - width / 2, y + width / 2, width / 2, level + 1));
             break;
         case BOTTOMLEFT:
-            childs[pos] = std::unique_ptr<SQuadPoint>(new SQuadPoint(x - width / 2, y - width / 2, width / 2, level + 1, this));
+            childs[pos] = std::unique_ptr<SQuadPoint>(new SQuadPoint(x - width / 2, y - width / 2, width / 2, level + 1));
             break;
         case BOTTOMRIGHT:
-            childs[pos] = std::unique_ptr<SQuadPoint>(new SQuadPoint(x + width / 2, y - width / 2, width / 2, level + 1, this));
+            childs[pos] = std::unique_ptr<SQuadPoint>(new SQuadPoint(x + width / 2, y - width / 2, width / 2, level + 1));
             break;
         case TOPRIGHT:
-            childs[pos] = std::unique_ptr<SQuadPoint>(new SQuadPoint(x + width / 2, y + width / 2, width / 2, level + 1, this));
+            childs[pos] = std::unique_ptr<SQuadPoint>(new SQuadPoint(x + width / 2, y + width / 2, width / 2, level + 1));
             break;
         default:
             throw std::runtime_error("unexpected position inserting new SQuadPoint");
@@ -137,7 +175,16 @@ struct SQuadPoint
         return childs[pos]->insert(a_point);
     }
 
-    bool insert(T & a_point){
+    typename T::data_type & operator[](const T & a_point){
+        auto it = find(a_point);
+        if(it == end()){
+            this->insert(a_point);
+        }
+        it = find(a_point);
+        return (*it).data;
+    }
+
+    bool insert(const T & a_point){
         bool result = false;
         if(std::fabs(a_point.X)  <= std::fabs(x) + width && std::fabs(a_point.Y)  <= std::fabs(y) + width){
             position pos = getPosIndex(a_point.X, a_point.Y);
@@ -146,10 +193,12 @@ struct SQuadPoint
                 result = childs[pos]->insert(a_point);
             }
             else {
-                if(hasData() && (points[0] != a_point)){
-                    result = _insertCreateQuad(std::move(points[0]));
-                    points.pop_back();
-                    result = result && _insertCreateQuad(a_point);
+                if(hasData()){
+                    if((points[0] != a_point)){
+                        result = _insertCreateQuad(std::move(points[0]));
+                        points.pop_back();
+                        result = result && _insertCreateQuad(a_point);
+                    }
                 }
                 else{
                     points.push_back(a_point);
@@ -158,52 +207,107 @@ struct SQuadPoint
 
             }
         }
+        if(result){
+            _size++;
+        }
         return result;
     }
 
-    bool erase(QuadIterator & it){
-        SQuadPoint & current = *it;
-        SQuadPoint * parent = current.parent;
-        if (current.isLeaf() && current.level != 0){
-            SQuadPoint * parent = current.parent;
-            short index = -1;
-            for(ushort i=0; i<parent->childs.size();i++){
-                if (parent->childs[i] == *it){
-                    index = i;
-                }
-            }
-            parent->childs.erase(index);
-            if(parent->isLeaf() && !(parent->hasData())){
-               return erase(QuadIterator(parent));
-           }
-           return true;
-        }
-        return false;
+    bool erase (T & a_point){
+        return erase(find(a_point));
     }
 
+    bool erase(QuadIterator it){
+        SQuadPoint * current = it.stack.top();it.stack.pop();
+        if(current->isLeaf() && it.current == current){
+            current->points.clear();
+            current->_size = 0;
+            return true;
+        }
+        SQuadPoint * parent = it.stack.top();
+        short index = -1;
+        for(ushort i=0; i<parent->childs.size();i++){
+            if (parent->childs[i].get() == current){
+                index = i;
+                break;
+            }
+        }
+        parent->childs[index].reset();
 
-    std::pair<QuadIterator, QuadIterator> find(T & a_point){
-        std::pair<QuadIterator, QuadIterator> result;
-        if(isLeaf()){
-            if(hasData() && points[0] == a_point){
-                result =  std::pair<QuadIterator, QuadIterator>(QuadIterator(this), QuadIterator());
+        while(it.stack.size() >= 2 && parent->isLeaf() && !parent->hasData()){
+            current = it.stack.top();it.stack.pop();
+            parent = it.stack.top();
+            index = -1;
+            for(ushort i=0; i<parent->childs.size();i++){
+                if (parent->childs[i].get() == current){
+                    index = i;
+                    break;
+                }
+            }
+            parent->childs[index].reset();
+        }
+        _size--;
+        return true;
+    }
+
+    void clear(){
+        for(size_t i=0; i < childs.size(); i++){
+            childs[i].reset();
+        }
+        _size = 0;
+        this->points.clear();
+
+    }
+
+    QuadIterator find(const T & a_point){
+        assert(level == 0 || !isLeaf());
+        QuadIterator result;
+        SQuadPoint * tmp = this;
+
+        while(true){
+            result.stack.push(tmp);
+            position i = tmp->getPosIndex(a_point.X, a_point.Y);
+            if (tmp->childs[i] != nullptr ){
+                tmp = tmp->childs[i].get();
+            }
+            else{
+                break;
+            }
+        };
+
+        if(tmp->hasData() && tmp->points[0] == a_point){
+            result.current=tmp;
+        }else{
+            while(result.stack.size()){
+                result.stack.pop();
             }
         }
-        else{
-            position i = getPosIndex(a_point.X, a_point.Y);
-            if ( childs[i] != nullptr ){
-                result = childs[i]->find(a_point);
-            }
-        }
+
         return result;
     }
 
     QuadIterator begin(){
+        if(isLeaf() && !hasData()){
+            return QuadIterator();
+        }
         return QuadIterator(this);
     }
 
     QuadIterator end(){
         return QuadIterator();
+    }
+
+    size_t size()const{
+        return _size;
+    }
+
+    bool checkSize(){
+        uint vda=0;
+        for(auto it = this->begin(); it != this->end();it++){
+            vda++;
+        }
+        assert(vda == size());
+        return vda == size();
     }
 };
 

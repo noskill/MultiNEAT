@@ -9,6 +9,7 @@
 #include "Point.h"
 #include <algorithm>
 #include "SubstrateBase.h"
+#include "QuadTree.h"
 
 
 namespace NEAT
@@ -23,9 +24,9 @@ private:
     EvolvableSubstrate()=delete;
 
 public:
-    std::map<PointD, uint> hiddenInsertIndex;
-    std::map<PointD, uint> outputInsertIndex;
-    std::map<PointD, uint> inputInsertIndex;
+    SQuadPoint<PointD> hiddenInsertIndex;
+    SQuadPoint<PointD> outputInsertIndex;
+    SQuadPoint<PointD> inputInsertIndex;
     NEAT::ActivationFunction m_hidden_nodes_activation = NEAT::UNSIGNED_SIGMOID;
     NEAT::ActivationFunction m_output_nodes_activation = NEAT::UNSIGNED_SIGMOID;
     std::vector<LinkGene> m_connections;
@@ -139,18 +140,18 @@ public:
     uint GetMaxDims(){
         uint result = 0;
         for(auto it=inputInsertIndex.begin(); it!=inputInsertIndex.end(); it++){
-            result = std::max((uint)(it->first.size()), result);
+            result = std::max((uint)((*it).size()), result);
         }
         for(auto it=outputInsertIndex.begin(); it!=outputInsertIndex.end(); it++){
-            result = std::max((uint)(it->first.size()), result);
+            result = std::max((uint)((*it).size()), result);
         }
         for(auto it=hiddenInsertIndex.begin(); it!=hiddenInsertIndex.end(); it++){
-            result = std::max((uint)(it->first.size()), result);
+            result = std::max((uint)((*it).size()), result);
         }
         return result;
     }
 
-    std::map<PointD, uint> getHiddenPoints();
+    SQuadPoint<PointD> getHiddenPoints();
 
     //debug and test functions
 
@@ -163,6 +164,7 @@ public:
     bool pointExists(size_t neuronId);
 
     size_t CoordinatesSize();
+    std::vector<PointD> checkNeuronID(uint a_id);
 };
 
 }

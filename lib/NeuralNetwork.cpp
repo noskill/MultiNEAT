@@ -329,7 +329,6 @@ void NeuralNetwork::ActivateFast()
 
 void NeuralNetwork::Activate()
 {
-    size_t s = m_connections.size();
     // Loop connections. Calculate each connection's output signal.
     for (unsigned int i = 0; i < m_connections.size(); i++)
     {

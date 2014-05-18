@@ -22,6 +22,7 @@ struct Point2D
     static const unsigned short SIZE = 2;
     constexpr static const float THRESHOLD = 0.000001;
     typedef T value_type;
+    typedef D data_type;
 
     Point2D(T x, T y):
         X(x), Y(y){}

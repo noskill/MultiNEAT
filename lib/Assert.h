@@ -27,7 +27,7 @@
 
 
 #include <iostream>
-//#define NDEBUG
+#define NDEBUG
 #include <assert.h>
 #include <exception>
 

@@ -696,8 +696,8 @@ void Genome::BuildHyperNEATESPhenotype(NeuralNetwork& net, EvolvableSubstrate &s
 
         t_n.m_a = 1;
         t_n.m_b = 0;
-        t_n.id = it->second;
-        t_n.m_substrate_coords = it->first;
+        t_n.id = (*it).data;
+        t_n.m_substrate_coords = *it;
 
         t_n.m_activation_function_type = NEAT::LINEAR;
         t_n.m_type = NEAT::INPUT;
@@ -712,8 +712,8 @@ void Genome::BuildHyperNEATESPhenotype(NeuralNetwork& net, EvolvableSubstrate &s
 
         t_n.m_a = 1;
         t_n.m_b = 0;
-        t_n.id = it->second;
-        t_n.m_substrate_coords = it->first;
+        t_n.id = (*it).data;
+        t_n.m_substrate_coords = *it;
 
 
         t_n.m_activation_function_type = subst.m_output_nodes_activation;
@@ -729,8 +729,8 @@ void Genome::BuildHyperNEATESPhenotype(NeuralNetwork& net, EvolvableSubstrate &s
 
         t_n.m_a = 1;
         t_n.m_b = 0;
-        t_n.id = it->second;
-        t_n.m_substrate_coords = it->first;
+        t_n.id = (*it).data;
+        t_n.m_substrate_coords = *it;
 
 
         t_n.m_activation_function_type = subst.m_hidden_nodes_activation;
