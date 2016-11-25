@@ -57,7 +57,7 @@ def evaluate(genome):
         net.Activate()
     o = net.Output()
     error += abs(o[0])
-    
+    # fitness is maximum when error = 0
     return (4 - error)**2
     
 params = NEAT.Parameters()
@@ -102,7 +102,7 @@ def getbest():
         NEAT.ZipFitness(genome_list, fitness_list)
         
         best = max([x.GetLeader().GetFitness() for x in pop.Species])
-#        print 'Best fitness:', best, 'Species:', len(pop.Species)
+        print 'Best fitness:', best, 'Species:', len(pop.Species)
         
         # test
         net = NEAT.NeuralNetwork()
