@@ -1,9 +1,6 @@
 #!/usr/bin/python
 import os
 import sys
-sys.path.append("/home/peter")
-sys.path.append("/home/peter/Desktop")
-sys.path.append("/home/peter/Desktop/projects")
 import time
 import random as rnd
 import commands as comm
@@ -17,7 +14,7 @@ import multiprocessing as mpc
 params = NEAT.loadParameters('params.txt')
 
 
-# the simple 2D substrate with 3 input points, 2 hidden and 1 output for XOR 
+# the simple 2D substrate with 3 input points, 2 hidden and 1 output for XOR
 substrate = NEAT.EvolvableSubstrate(params, [(-1, -1), (-1, 0), (-1, 1)],
                            [(1, 0)])
 
@@ -25,7 +22,7 @@ substrate = NEAT.EvolvableSubstrate(params, [(-1, -1), (-1, 0), (-1, 1)],
 substrate.m_hidden_nodes_activation = NEAT.ActivationFunction.TANH
 substrate.m_outputs_nodes_activation = NEAT.ActivationFunction.UNSIGNED_SIGMOID
 
-# code 
+# code
 cv2.namedWindow('CPPN', 0)
 cv2.namedWindow('NN', 0)
 
@@ -91,14 +88,14 @@ def ajustCoeff(nn):
     return result
 
 def getbest():
-    g = NEAT.Genome(5, 
-                    substrate.GetMinCPPNInputs(), 
-                    0, 
-                    substrate.GetMinCPPNOutputs(), 
-                    False, 
-                    NEAT.ActivationFunction.SIGNED_GAUSS, 
-                    NEAT.ActivationFunction.SIGNED_GAUSS, 
-                    0, 
+    g = NEAT.Genome(5,
+                    substrate.GetMinCPPNInputs(),
+                    0,
+                    substrate.GetMinCPPNOutputs(),
+                    False,
+                    NEAT.ActivationFunction.SIGNED_GAUSS,
+                    NEAT.ActivationFunction.SIGNED_GAUSS,
+                    0,
                     params)
     pop = NEAT.Population(g, params, True, 1.0)
 
@@ -119,7 +116,7 @@ def getbest():
         img += 10
         NEAT.DrawPhenotype(img, (0, 0, 250, 250), net )
         cv2.imshow("CPPN", img)
-    
+
         net = NEAT.NeuralNetwork()
         pop.Species[0].GetLeader().BuildHyperNEATESPhenotype(net, substrate)
         img = np.zeros((250, 250, 3), dtype=np.uint8)
